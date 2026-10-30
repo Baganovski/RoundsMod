@@ -536,7 +536,8 @@ namespace RWF
             var charSelectionGroupGo = mainMenuGo.transform.Find("ListSelector").Find("CharacterSelect").GetChild(0).gameObject;
 
             StartCoroutine(InjectKeybindsWhenReady());
-            this.ExecuteAfterSeconds(0.5f, () => this.NormalizeMainMenuLayout(mainMenuGo));
+            this.NormalizeMainMenuLayout(mainMenuGo);
+            StartCoroutine(CatchLateMenuButtons(mainMenuGo));
 
             if (!charSelectionGroupGo.transform.Find("CharacterSelect 3"))
             {
@@ -630,6 +631,117 @@ namespace RWF
             }
 
         }
+        IEnumerator CatchLateMenuButtons(GameObject mainMenuGo)
+        {
+            const int frames = 8;
+            int lastCount = -1;
+            for (int frame = 0; frame < frames; frame++)
+            {
+                yield return new WaitForEndOfFrame();
+                Transform group = mainMenuGo != null ? mainMenuGo.transform.Find("ListSelector/Main/Group") : null;
+                int count = group != null ? group.childCount : -1;
+                bool lateButtons = group != null && group.Find("MODS") != null && group.Find("CREDITS") != null;
+                if (count != lastCount || lateButtons)
+                {
+                    this.NormalizeMainMenuLayout(mainMenuGo);
+                    lastCount = group != null ? group.childCount : count;
+                }
+
+                this.MatchPauseModsHighlight();
+            }
+        }
+
+        internal void MatchPauseModsHighlight()
+        {
+            if (UIHandler.instance == null)
+            {
+                return;
+            }
+
+            Transform group = UIHandler.instance.transform.Find("Canvas/EscapeMenu/Main/Group");
+            Transform mods = group != null ? group.Find("MODS") : null;
+            Transform resume = group != null ? group.Find("Resume") : null;
+            if (mods == null || resume == null)
+            {
+                return;
+            }
+
+            RectTransform resumeRect = resume.GetComponent<RectTransform>();
+            RectTransform modsRect = mods.GetComponent<RectTransform>();
+            if (resumeRect == null || modsRect == null)
+            {
+                return;
+            }
+
+            float height = resumeRect.sizeDelta.y;
+            mods.localScale = Vector3.one;
+            modsRect.anchorMin = resumeRect.anchorMin;
+            modsRect.anchorMax = resumeRect.anchorMax;
+            modsRect.pivot = resumeRect.pivot;
+            // Unbound adds 400px of width, which shifts this row's center off the shared bar.
+            modsRect.sizeDelta = resumeRect.sizeDelta;
+
+            LayoutElement resumeLayout = resume.GetComponent<LayoutElement>();
+            LayoutElement modsLayout = mods.gameObject.GetOrAddComponent<LayoutElement>();
+            if (resumeLayout != null)
+            {
+                modsLayout.minHeight = resumeLayout.minHeight;
+                modsLayout.preferredHeight = resumeLayout.preferredHeight;
+                modsLayout.flexibleHeight = resumeLayout.flexibleHeight;
+                modsLayout.ignoreLayout = resumeLayout.ignoreLayout;
+            }
+            else
+            {
+                modsLayout.minHeight = height;
+                modsLayout.preferredHeight = height;
+                modsLayout.flexibleHeight = 0f;
+                modsLayout.ignoreLayout = false;
+            }
+
+            ContentSizeFitter modsFitter = mods.GetComponent<ContentSizeFitter>();
+            if (modsFitter != null)
+            {
+                modsFitter.enabled = false;
+            }
+
+            TextMeshProUGUI resumeLabel = resume.GetComponentInChildren<TextMeshProUGUI>(true);
+            TextMeshProUGUI modsLabel = mods.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (resumeLabel != null && modsLabel != null)
+            {
+                // Unbound's button prefab auto-sizes, so the short "MODS" label grows.
+                // Stock pause labels are a fixed size.
+                modsLabel.enableAutoSizing = false;
+                modsLabel.fontSize = resumeLabel.fontSize;
+                modsLabel.fontSizeMin = resumeLabel.fontSizeMin;
+                modsLabel.fontSizeMax = resumeLabel.fontSizeMax;
+                if (resumeLabel.font != null)
+                {
+                    modsLabel.font = resumeLabel.font;
+                    modsLabel.fontSharedMaterial = resumeLabel.fontSharedMaterial;
+                }
+
+                RectTransform resumeText = resumeLabel.rectTransform;
+                RectTransform modsText = modsLabel.rectTransform;
+                modsText.anchorMin = resumeText.anchorMin;
+                modsText.anchorMax = resumeText.anchorMax;
+                modsText.pivot = resumeText.pivot;
+                modsText.sizeDelta = resumeText.sizeDelta;
+                modsText.anchoredPosition = resumeText.anchoredPosition;
+                modsText.localScale = Vector3.one;
+            }
+
+            ListMenuButton modsButton = mods.GetComponent<ListMenuButton>();
+            if (modsButton == null)
+            {
+                return;
+            }
+
+            // Unbound's menu-button prefab hides the shared selection bar. Pause-menu rows show it.
+            modsButton.hideBar = false;
+
+            modsButton.setBarHeight = 0f;
+        }
+
         internal void NormalizeMainMenuLayout(GameObject mainMenuGo = null)
         {
             if (mainMenuGo == null && MainMenuHandler.instance != null)
@@ -658,107 +770,164 @@ namespace RWF
 
             main.position = new Vector3(0f, 1.7f, main.position.z);
 
-            var logo = group.Find("Rounds_Logo2_White");
-            if (logo != null)
+            try
             {
-                var logoRect = logo.GetComponent<RectTransform>();
-                if (logoRect != null)
-                {
-                    logoRect.sizeDelta = new Vector2(logoRect.sizeDelta.x, 80f);
-                }
-                var logoLayout = logo.gameObject.GetOrAddComponent<LayoutElement>();
-                logoLayout.minHeight = 80f;
-                logoLayout.preferredHeight = 80f;
-
-                const float titleGap = 36f;
-                Transform spacer = group.Find("TitleGap");
-                if (spacer == null)
-                {
-                    GameObject spacerGo = new GameObject("TitleGap", typeof(RectTransform));
-                    spacerGo.transform.SetParent(group, false);
-                    spacer = spacerGo.transform;
-                }
-
-                spacer.SetSiblingIndex(logo.GetSiblingIndex() + 1);
-                LayoutElement gapLayout = spacer.gameObject.GetOrAddComponent<LayoutElement>();
-                gapLayout.minHeight = titleGap;
-                gapLayout.preferredHeight = titleGap;
-                gapLayout.flexibleHeight = 0f;
-                gapLayout.ignoreLayout = false;
+                this.FitMainMenuLogo(group);
+            }
+            catch (NullReferenceException)
+            {
             }
 
             const float optionHeight = 56f;
             for (int i = 0; i < group.childCount; i++)
             {
-                Transform child = group.GetChild(i);
-                if (!child.gameObject.activeSelf)
+                try
                 {
-                    continue;
+                    this.FitMainMenuOption(group.GetChild(i), optionHeight);
                 }
-                if (child.GetComponent<ListMenuButton>() == null && child.GetComponent<Button>() == null)
+                catch (NullReferenceException)
                 {
-                    continue;
-                }
-
-                RectTransform rect = child.GetComponent<RectTransform>();
-                if (rect == null)
-                {
-                    continue;
-                }
-
-                child.localScale = Vector3.one;
-                rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, optionHeight);
-
-                LayoutElement element = child.gameObject.GetOrAddComponent<LayoutElement>();
-                element.minHeight = optionHeight;
-                element.preferredHeight = optionHeight;
-                element.flexibleHeight = 0f;
-                element.ignoreLayout = false;
-
-                ContentSizeFitter buttonFitter = child.GetComponent<ContentSizeFitter>();
-                if (buttonFitter != null)
-                {
-                    buttonFitter.enabled = false;
-                }
-
-                TextMeshProUGUI label = child.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (label != null)
-                {
-                    label.fontSize = 50f;
-                    label.alignment = TextAlignmentOptions.Center;
-                    label.margin = Vector4.zero;
-                    ContentSizeFitter textFitter = label.GetComponent<ContentSizeFitter>();
-                    if (textFitter != null)
-                    {
-                        textFitter.enabled = false;
-                    }
-
-                    RectTransform textRect = label.GetComponent<RectTransform>();
-                    if (textRect == null)
-                    {
-                        continue;
-                    }
-                    textRect.anchorMin = new Vector2(0.5f, 0.5f);
-                    textRect.anchorMax = new Vector2(0.5f, 0.5f);
-                    textRect.pivot = new Vector2(0.5f, 0.5f);
-                    textRect.anchoredPosition = Vector2.zero;
-                    textRect.localPosition = new Vector3(0f, 0f, textRect.localPosition.z);
-                    textRect.sizeDelta = new Vector2(rect.sizeDelta.x, optionHeight);
-                }
-
-                ListMenuButton menuButton = child.GetComponent<ListMenuButton>();
-                if (menuButton != null)
-                {
-                    menuButton.setBarHeight = optionHeight;
                 }
             }
 
             RectTransform groupRect = group.GetComponent<RectTransform>();
             if (groupRect != null)
             {
-                LayoutRebuilder.ForceRebuildLayoutImmediate(groupRect);
+                try
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(groupRect);
+                }
+                catch (NullReferenceException)
+                {
+                }
             }
+
+            for (int i = 0; i < group.childCount; i++)
+            {
+                try
+                {
+                    this.StyleMainMenuLabel(group.GetChild(i), optionHeight);
+                }
+                catch (NullReferenceException)
+                {
+                }
+            }
+        }
+
+        void FitMainMenuLogo(Transform group)
+        {
+            var logo = group.Find("Rounds_Logo2_White");
+            if (logo == null)
+            {
+                return;
+            }
+
+            var logoRect = logo.GetComponent<RectTransform>();
+            if (logoRect != null)
+            {
+                logoRect.sizeDelta = new Vector2(logoRect.sizeDelta.x, 80f);
+            }
+            var logoLayout = logo.gameObject.GetOrAddComponent<LayoutElement>();
+            logoLayout.minHeight = 80f;
+            logoLayout.preferredHeight = 80f;
+
+            const float titleGap = 36f;
+            Transform spacer = group.Find("TitleGap");
+            if (spacer == null)
+            {
+                GameObject spacerGo = new GameObject("TitleGap", typeof(RectTransform));
+                spacerGo.transform.SetParent(group, false);
+                spacer = spacerGo.transform;
+            }
+
+            spacer.SetSiblingIndex(logo.GetSiblingIndex() + 1);
+            LayoutElement gapLayout = spacer.gameObject.GetOrAddComponent<LayoutElement>();
+            gapLayout.minHeight = titleGap;
+            gapLayout.preferredHeight = titleGap;
+            gapLayout.flexibleHeight = 0f;
+            gapLayout.ignoreLayout = false;
+        }
+
+        void FitMainMenuOption(Transform child, float optionHeight)
+        {
+            if (child == null || !child.gameObject.activeSelf)
+            {
+                return;
+            }
+            if (child.GetComponent<ListMenuButton>() == null && child.GetComponent<Button>() == null)
+            {
+                return;
+            }
+
+            RectTransform rect = child.GetComponent<RectTransform>();
+            if (rect == null)
+            {
+                return;
+            }
+
+            child.localScale = Vector3.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, optionHeight);
+
+            LayoutElement element = child.gameObject.GetOrAddComponent<LayoutElement>();
+            element.minHeight = optionHeight;
+            element.preferredHeight = optionHeight;
+            element.flexibleHeight = 0f;
+            element.ignoreLayout = false;
+
+            ContentSizeFitter buttonFitter = child.GetComponent<ContentSizeFitter>();
+            if (buttonFitter != null)
+            {
+                buttonFitter.enabled = false;
+            }
+
+            ListMenuButton menuButton = child.GetComponent<ListMenuButton>();
+            if (menuButton != null)
+            {
+                menuButton.setBarHeight = optionHeight;
+            }
+        }
+
+        void StyleMainMenuLabel(Transform child, float optionHeight)
+        {
+            if (child == null || !child.gameObject.activeSelf)
+            {
+                return;
+            }
+            if (child.GetComponent<ListMenuButton>() == null && child.GetComponent<Button>() == null)
+            {
+                return;
+            }
+
+            TextMeshProUGUI label = child.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label == null || label.font == null || !label.isActiveAndEnabled)
+            {
+                return;
+            }
+
+            RectTransform rect = child.GetComponent<RectTransform>();
+            RectTransform textRect = label.rectTransform;
+            if (rect == null || textRect == null)
+            {
+                return;
+            }
+
+            label.enableAutoSizing = false;
+            label.fontSize = 50f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.margin = Vector4.zero;
+            ContentSizeFitter textFitter = label.GetComponent<ContentSizeFitter>();
+            if (textFitter != null)
+            {
+                textFitter.enabled = false;
+            }
+
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
+            textRect.localPosition = new Vector3(0f, 0f, textRect.localPosition.z);
+            textRect.sizeDelta = new Vector2(rect.sizeDelta.x, optionHeight);
         }
 
         internal void NormalizeMenuPageLayout(ListMenuPage page)

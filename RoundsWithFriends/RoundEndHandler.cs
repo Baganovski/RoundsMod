@@ -17,6 +17,7 @@ namespace RWF
 
         private int gmOriginalMaxRounds = -1;
         private bool waitingForHost = false;
+        private bool reopenPrivateRoom;
 
 
         public void Awake()
@@ -166,7 +167,8 @@ namespace RWF
                 }
             }
 
-            // Reopen lobby after main scene is loaded
+            // Online matches return to the private lobby. Local matches stay on the main menu.
+            RoundEndHandler.instance.reopenPrivateRoom = !PhotonNetwork.OfflineMode;
             SceneManager.sceneLoaded += RoundEndHandler.OnSceneLoad;
 
             gm.GameMode.StopAllCoroutines();
@@ -180,11 +182,14 @@ namespace RWF
             if (scene.name == "Main")
             {
                 SceneManager.sceneLoaded -= RoundEndHandler.OnSceneLoad;
-                PrivateRoomHandler.instance.Open();
-
-                if (PhotonNetwork.IsMasterClient)
+                if (RoundEndHandler.instance.reopenPrivateRoom)
                 {
-                    PrivateRoomHandler.RestoreSettings();
+                    PrivateRoomHandler.instance.Open();
+
+                    if (PhotonNetwork.IsMasterClient)
+                    {
+                        PrivateRoomHandler.RestoreSettings();
+                    }
                 }
 
                 RoundEndHandler.instance.gmOriginalMaxRounds = -1;
