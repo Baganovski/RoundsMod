@@ -16,7 +16,6 @@ namespace RWF.UI
         const string LockKey = "RWF_SandboxCardBrowser";
         const float RowHeight = 44f;
         const float ColumnWidth = 88f;
-        const float ViewButtonWidth = 76f;
 
         bool open;
         string filter = "";
@@ -401,8 +400,19 @@ namespace RWF.UI
             layout.preferredHeight = RowHeight;
             layout.flexibleWidth = 1f;
 
+            bool showing = preview != null && previewCardId == card.gameObject.name;
             Image image = row.AddComponent<Image>();
-            image.color = new Color(0.08f, 0.18f, 0.38f, 0.95f);
+            image.color = showing ? new Color(0.14f, 0.38f, 0.68f, 0.98f) : new Color(0.08f, 0.18f, 0.38f, 0.95f);
+
+            Button rowButton = row.AddComponent<Button>();
+            rowButton.targetGraphic = image;
+            ColorBlock rowColors = rowButton.colors;
+            rowColors.normalColor = image.color;
+            rowColors.highlightedColor = new Color(0.18f, 0.48f, 0.82f, 1f);
+            rowColors.pressedColor = new Color(0.1f, 0.28f, 0.52f, 1f);
+            rowButton.colors = rowColors;
+            CardInfo picked = card;
+            rowButton.onClick.AddListener(() => ShowCard(picked));
 
             GameObject labelGo = new GameObject("Label");
             labelGo.transform.SetParent(row.transform, false);
@@ -412,7 +422,7 @@ namespace RWF.UI
             labelRect.anchorMin = new Vector2(0f, 0f);
             labelRect.anchorMax = new Vector2(1f, 1f);
             labelRect.pivot = new Vector2(0f, 0.5f);
-            labelRect.offsetMin = new Vector2(ViewButtonWidth + 16f, 4f);
+            labelRect.offsetMin = new Vector2(16f, 4f);
             labelRect.offsetMax = new Vector2(-(players.Count * ColumnWidth + 8f), -4f);
             label.font = RoundsResources.MenuFont;
             label.fontSize = 26f;
@@ -424,7 +434,6 @@ namespace RWF.UI
             label.text = card.cardName.ToUpper();
             label.raycastTarget = false;
             label.ForceMeshUpdate(true);
-            CreateViewButton(row.transform, card);
 
             for (int i = 0; i < players.Count; i++)
             {
@@ -477,48 +486,6 @@ namespace RWF.UI
             mark.text = selected ? "X" : "";
             mark.raycastTarget = false;
             mark.ForceMeshUpdate(true);
-        }
-
-        void CreateViewButton(Transform row, CardInfo card)
-        {
-            bool showing = preview != null && previewCardId == card.gameObject.name;
-
-            GameObject box = new GameObject("View");
-            box.transform.SetParent(row, false);
-            box.transform.localScale = Vector3.one;
-            RectTransform boxRect = box.AddComponent<RectTransform>();
-            boxRect.anchorMin = new Vector2(0f, 0.5f);
-            boxRect.anchorMax = new Vector2(0f, 0.5f);
-            boxRect.pivot = new Vector2(0f, 0.5f);
-            boxRect.anchoredPosition = new Vector2(8f, 0f);
-            boxRect.sizeDelta = new Vector2(ViewButtonWidth, 30f);
-
-            Image boxImage = box.AddComponent<Image>();
-            boxImage.color = showing ? new Color(0.2f, 0.85f, 0.95f, 1f) : new Color(0.02f, 0.05f, 0.12f, 1f);
-
-            Button button = box.AddComponent<Button>();
-            button.targetGraphic = boxImage;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = new Color(0.25f, 0.9f, 1f, 1f);
-            colors.pressedColor = new Color(0.1f, 0.55f, 0.7f, 1f);
-            colors.normalColor = boxImage.color;
-            button.colors = colors;
-
-            CardInfo picked = card;
-            button.onClick.AddListener(() => ShowCard(picked));
-
-            GameObject labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(box.transform, false);
-            labelGo.transform.localScale = Vector3.one;
-            TextMeshProUGUI label = labelGo.AddComponent<TextMeshProUGUI>();
-            Stretch(label.rectTransform, Vector2.zero, Vector2.zero);
-            label.font = RoundsResources.MenuFont;
-            label.fontSize = 16f;
-            label.alignment = TextAlignmentOptions.Center;
-            label.color = showing ? new Color(0.02f, 0.08f, 0.16f, 1f) : Color.white;
-            label.text = showing ? "HIDE" : "VIEW";
-            label.raycastTarget = false;
-            label.ForceMeshUpdate(true);
         }
 
         void ShowCard(CardInfo card)
@@ -1191,6 +1158,15 @@ namespace RWF.UI
             searchRect.anchoredPosition = new Vector2(28f, -18f);
             searchRect.sizeDelta = new Vector2(420f, 42f);
 
+            TextMeshProUGUI searchHint = CreateText(panel.transform, "SearchHint", "CLICK A CARD NAME TO VIEW IT", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform searchHintRect = searchHint.rectTransform;
+            searchHintRect.anchorMin = new Vector2(0f, 1f);
+            searchHintRect.anchorMax = new Vector2(1f, 1f);
+            searchHintRect.pivot = new Vector2(0f, 1f);
+            searchHintRect.anchoredPosition = new Vector2(28f, -58f);
+            searchHintRect.sizeDelta = new Vector2(-56f, 22f);
+            searchHint.color = new Color(0.65f, 0.75f, 0.9f, 1f);
+
             statusLabel = CreateText(panel.transform, "Status", "", 22f, TextAlignmentOptions.MidlineRight);
             RectTransform statusRect = statusLabel.rectTransform;
             statusRect.anchorMin = new Vector2(1f, 1f);
@@ -1207,10 +1183,10 @@ namespace RWF.UI
             headerRect.anchorMin = new Vector2(0f, 1f);
             headerRect.anchorMax = new Vector2(1f, 1f);
             headerRect.pivot = new Vector2(0.5f, 1f);
-            headerRect.anchoredPosition = new Vector2(0f, -64f);
+            headerRect.anchoredPosition = new Vector2(0f, -84f);
             headerRect.sizeDelta = new Vector2(-48f, 40f);
 
-            TextMeshProUGUI help = CreateText(panel.transform, "Help", "VIEW SHOWS THE CARD  ·  TICK A PLAYER COLUMN TO GIVE THAT PLAYER THE CARD  ·  ESC CLOSES", 18f, TextAlignmentOptions.Center);
+            TextMeshProUGUI help = CreateText(panel.transform, "Help", "CLICK AGAIN TO HIDE THE CARD  ·  TICK A PLAYER COLUMN TO GIVE THAT PLAYER THE CARD  ·  ESC CLOSES", 18f, TextAlignmentOptions.Center);
             help.enableWordWrapping = true;
             help.overflowMode = TextOverflowModes.Overflow;
             RectTransform helpRect = help.rectTransform;
@@ -1228,7 +1204,7 @@ namespace RWF.UI
             scrollRectTransform.anchorMin = new Vector2(0f, 0f);
             scrollRectTransform.anchorMax = new Vector2(1f, 1f);
             scrollRectTransform.offsetMin = new Vector2(24f, 80f);
-            scrollRectTransform.offsetMax = new Vector2(-24f, -112f);
+            scrollRectTransform.offsetMax = new Vector2(-24f, -132f);
 
             ScrollRect scrollRect = scroll.AddComponent<ScrollRect>();
             scrollRect.horizontal = false;

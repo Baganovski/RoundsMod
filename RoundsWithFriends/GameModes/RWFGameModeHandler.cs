@@ -139,9 +139,9 @@ namespace RWF.GameModes
         {
             base.ChangeSetting(name, value);
 
-            if (name == "roundsToWinGame" && UIHandler.instance != null)
+            if (name == "roundsToWinGame" && GameModeManager.CurrentHandler == this)
             {
-                UIHandler.instance.InvokeMethod("SetNumberOfRounds", (int) value);
+                RWFMod.instance?.SyncLobbyRoundCounter();
             }
         }
     }

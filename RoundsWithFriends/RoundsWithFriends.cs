@@ -159,6 +159,8 @@ namespace RWF
                     handler.ChangeSetting(RWFMod.RoundsToWinGameKey, rounds);
                 }
             }
+
+            this.SyncLobbyRoundCounter();
         }
 
         public int ToggleRoundsToWinGame()
@@ -180,6 +182,16 @@ namespace RWF
             {
                 handler.ChangeSetting(RWFMod.RoundsToWinGameKey, this.RoundsToWinGame);
             }
+        }
+
+        public void SyncLobbyRoundCounter()
+        {
+            if (UIHandler.instance == null)
+            {
+                return;
+            }
+
+            UIHandler.instance.SyncLobbyRoundCounter();
         }
 
         public int MaxClients
@@ -273,6 +285,7 @@ namespace RWF
             GameModeManager.OnGameModeChanged += (gm) =>
             {
                 this.ApplyRoundsToWinGame();
+                this.SyncLobbyRoundCounter();
                 this.RedrawCharacterSelections();
                 this.RedrawCharacterCreators();
 

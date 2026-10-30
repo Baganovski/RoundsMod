@@ -72,6 +72,7 @@ namespace RWF.UI
                 this.transform.Find("RightPanel/Top/gameModeVideo").GetComponent<VideoPlayer>().Stop();
 
                 this.lobbyMenuObject.transform.parent.parent.parent.Find("UIHolder")?.gameObject.SetActive(true);
+                RWFMod.instance?.SyncLobbyRoundCounter();
 
                 this.gameObject.SetActive(false);
             });

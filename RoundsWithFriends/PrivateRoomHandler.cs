@@ -491,6 +491,8 @@ namespace RWF
             {
                 this.roundsText.text = $"ROUNDS TO WIN: {rounds}";
             }
+
+            RWFMod.instance?.SyncLobbyRoundCounter();
         }
 
         private void ResetHeaderText()

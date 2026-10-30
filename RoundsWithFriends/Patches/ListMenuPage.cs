@@ -76,6 +76,7 @@ namespace RWF.Patches
             if (__instance.gameObject.name == "CharacterSelect")
             {
                 KeybindHints.CreateLocalHints();
+                RWFMod.instance?.SyncLobbyRoundCounter();
                 return;
             }
 
