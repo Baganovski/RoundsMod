@@ -64,10 +64,12 @@ namespace RWF.UI
             EnsureHint();
             EnsureSpawnHint();
             bool waitingForPlayer = JoinedPlayers().Count == 0;
-            hint.SetActive(!open && !DevConsole.isTyping);
+            bool pauseOpen = EscapeMenuHandler.isEscMenu;
+            bool showUiHints = !pauseOpen && !DevConsole.isTyping;
+            hint.SetActive(!open && showUiHints);
             if (spawnHint != null)
             {
-                bool showSpawn = waitingForPlayer && !open && !DevConsole.isTyping;
+                bool showSpawn = waitingForPlayer && !open && showUiHints;
                 if (showSpawn && !spawnHint.activeSelf)
                 {
                     spawnHint.transform.SetAsLastSibling();

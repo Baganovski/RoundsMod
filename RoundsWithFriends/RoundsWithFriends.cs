@@ -305,6 +305,7 @@ namespace RWF
 
             this.gameObject.AddComponent<RoundEndHandler>();
             this.gameObject.AddComponent<SandboxCardBrowser>();
+            this.gameObject.AddComponent<MenuLayerGuard>();
 
             if (RWFMod.DEBUG)
             {

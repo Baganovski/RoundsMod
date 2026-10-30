@@ -1,0 +1,18 @@
+---
+description: Build and copy the mod into ROUNDS after code changes
+alwaysApply: true
+---
+
+# Update the local ROUNDS install
+
+After changing plugin code, build Debug before finishing so the running game folder gets the new DLL.
+
+```powershell
+dotnet build RoundsWithFriends/RoundsWithFriends.csproj -c Debug
+```
+
+- The post-build script copies `RoundsWithFriends.dll` to `ROUNDS\BepInEx\plugins\olavim-RoundsWithFriends`.
+- Use Debug for this. Release also copies the DLL, then packages Thunderstore and GitHub zips. Use Release only when the user asks for a release.
+- If the build fails, fix it and build again. Do not leave the game on the previous DLL.
+- BepInEx loads the plugin at launch. Tell the user to restart ROUNDS to see the change.
+- Skip the build when the change is docs, rules, or other files the game does not load.
