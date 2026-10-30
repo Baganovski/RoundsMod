@@ -20,7 +20,7 @@ After the game ends, you can choose to play a little longer, or to start a new g
 
 ## Changelog
 
-See [CHANGELOG.md](https://github.com/olavim/RoundsWithFriends/blob/main/CHANGELOG.md) for version changes.
+See [CHANGELOG.md](https://github.com/Baganovski/RoundsMod/blob/main/CHANGELOG.md) for version changes.
 
 ## Dependencies
 
@@ -47,4 +47,4 @@ Download the [latest release](https://github.com/Rounds-Modding/UnboundLib/relea
 
 #### 3. Download **RoundsWithFriends**.
 
-Download the [latest release](https://github.com/olavim/RoundsWithFriends/releases/latest) of **Rounds With Friends** and extract the downloaded zip file to the install directory of ROUNDS.
+Download the [latest release](https://github.com/Baganovski/RoundsMod/releases/latest) of **Rounds With Friends** and extract the downloaded zip file to the install directory of ROUNDS.

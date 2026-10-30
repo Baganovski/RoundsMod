@@ -9,14 +9,14 @@
             gameModeId: GameModeID,
             allowTeams: false,
             pointsToWinRound: 2,
-            roundsToWinGame: 3,
+            roundsToWinGame: RWFMod.instance != null ? RWFMod.instance.RoundsToWinGame : 5,
             // null values mean RWF's instance values
             playersRequiredToStartGame: null,
             maxPlayers: null,
             maxTeams: null,
             maxClients: null,
             description: "Free For All Deathmatch. Last player standing wins.",
-            videoURL: "https://github.com/olavim/RoundsWithFriends/raw/main/Media/Deathmatch.mp4")
+            videoURL: "https://github.com/Baganovski/RoundsMod/raw/main/Media/Deathmatch.mp4")
         {
 
         }

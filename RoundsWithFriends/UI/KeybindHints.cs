@@ -143,6 +143,17 @@ namespace RWF.UI
             KeybindHints.AddHint("Join/Ready", "jump");
             KeybindHints.AddHint("Select face", "Left/right");
             KeybindHints.AddHint("select team", new string[] { "[W/S]","[Dpad left/right]" });
+            KeybindHints.AddRoundsChangeHint();
+        }
+
+        static void AddRoundsChangeHint()
+        {
+            GameObject hintGO = GameObject.Instantiate(KeybindHints.KeybindPrefab, KeybindHints.KeybindHintHolder.transform);
+            hintGO.GetOrAddComponent<TextMeshProUGUI>();
+            hintGO.GetOrAddComponent<DestroyIfSet>();
+            hintGO.GetOrAddComponent<RoundsChangeHint>();
+            hintGO.SetActive(true);
+            hintGO.transform.localScale = Vector3.one;
         }
         public static void CreateOnlineHints()
         {
@@ -153,6 +164,33 @@ namespace RWF.UI
             KeybindHints.AddHint("Join/Ready", "jump");
             KeybindHints.AddHint("Select face", "Left/right");
             KeybindHints.AddHint("select team", new string[] { "[W/S]", "[Dpad left/right]" });
+        }
+
+        class RoundsChangeHint : MonoBehaviour
+        {
+            int lastRounds = -1;
+
+            void Update()
+            {
+                if (RWFMod.instance == null)
+                {
+                    return;
+                }
+
+                int rounds = RWFMod.instance.RoundsToWinGame;
+                if (rounds == this.lastRounds)
+                {
+                    return;
+                }
+
+                this.lastRounds = rounds;
+                TextMeshProUGUI label = this.GetComponent<TextMeshProUGUI>();
+                label.text = $"[R] TO CHANGE ROUNDS (CURRENTLY {rounds} ROUNDS)".ToUpper();
+                if (this.transform.parent?.GetComponent<LayoutGroup>() != null)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(this.transform.GetComponent<RectTransform>());
+                }
+            }
         }
 
         class DestroyIfSet : MonoBehaviour

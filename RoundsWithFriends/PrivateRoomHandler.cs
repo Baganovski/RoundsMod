@@ -82,10 +82,12 @@ namespace RWF
         private GameObject gamemodeHeader;
         // private GameObject gameModeListObject;
         private GameObject gameModeButton;
+        private GameObject roundsButton;
         private TextMeshProUGUI headerText;
         private TextMeshProUGUI gamemodeHeaderText;
         private TextMeshProUGUI inviteText;
         private TextMeshProUGUI gamemodeText;
+        private TextMeshProUGUI roundsText;
         // private TextMeshProUGUI gameModeText;
         private VersusDisplay versusDisplay;
         private bool _lockReadies;
@@ -318,7 +320,29 @@ namespace RWF
             this.gamemodeText = this.gameModeButton.GetComponentInChildren<TextMeshProUGUI>();
             this.gamemodeText.color = (PhotonNetwork.CurrentRoom != null) ? PrivateRoomHandler.enabledTextColor : PrivateRoomHandler.disabledTextColor;
             this.gameModeButton.GetComponent<Button>().enabled = false;
-            
+
+            this.roundsButton = MenuHandler.CreateButton($"ROUNDS TO WIN: {RWFMod.instance.RoundsToWinGame}", this.grid, () => { });
+            var roundsLayoutElement = this.roundsButton.GetComponent<LayoutElement>();
+            roundsLayoutElement.minHeight = 92f;
+            roundsLayoutElement.minWidth = 5000f;
+            this.roundsButton.GetComponent<ListMenuButton>().setBarHeight = 92f;
+            this.roundsText = this.roundsButton.GetComponentInChildren<TextMeshProUGUI>();
+            this.roundsText.color = (PhotonNetwork.CurrentRoom != null) ? PrivateRoomHandler.enabledTextColor : PrivateRoomHandler.disabledTextColor;
+            this.roundsButton.GetComponent<Button>().enabled = false;
+            this.roundsButton.GetComponent<Button>().onClick.AddListener(() =>
+            {
+                if (!PhotonNetwork.IsMasterClient || GameModeManager.CurrentHandler == null)
+                {
+                    return;
+                }
+
+                int rounds = RWFMod.instance.ToggleRoundsToWinGame();
+                this.roundsText.text = $"ROUNDS TO WIN: {rounds}";
+                this.RefreshGamemodeHeader();
+                this.UnreadyAllPlayers();
+                this.SyncMethod(nameof(PrivateRoomHandler.SetGameSettings), null, GameModeManager.CurrentHandlerID, GameModeManager.CurrentHandler.Settings);
+            });
+
             var backGo = new GameObject("Back");
             backGo.transform.SetParent(this.grid.transform);
             backGo.transform.localScale = Vector3.one;
@@ -449,6 +473,26 @@ namespace RWF
             }
         }
 
+        void RefreshGamemodeHeader()
+        {
+            string name = GameModeManager.CurrentHandler?.Name?.ToUpper() ?? "CONNECTING...";
+            int rounds = RWFMod.instance != null ? RWFMod.instance.RoundsToWinGame : 5;
+            if (GameModeManager.CurrentHandler?.Settings != null && GameModeManager.CurrentHandler.Settings.TryGetValue(RWFMod.RoundsToWinGameKey, out object value) && value is int settingRounds)
+            {
+                rounds = settingRounds;
+            }
+
+            if (this.gamemodeHeaderText != null)
+            {
+                this.gamemodeHeaderText.text = $"{name} - {rounds} ROUNDS";
+            }
+
+            if (this.roundsText != null)
+            {
+                this.roundsText.text = $"ROUNDS TO WIN: {rounds}";
+            }
+        }
+
         private void ResetHeaderText()
         {
             this.headerText.text = "ROUNDS WITH FRIENDS";
@@ -534,17 +578,22 @@ namespace RWF
             // set text colors to enabled, hide gamemode button if this player is not host
             this.inviteText.color = PrivateRoomHandler.enabledTextColor;
             this.gamemodeText.color = PrivateRoomHandler.enabledTextColor;
+            this.roundsText.color = PrivateRoomHandler.enabledTextColor;
             // this.gameModeText.color = PrivateRoomHandler.enabledTextColor;
             if (PhotonNetwork.IsMasterClient)
             {
                 // GamemodeScrollView.scrollView.SetActive(true);
                 this.gameModeButton.gameObject.SetActive(true);
                 this.gameModeButton.GetComponent<Button>().enabled = true;
+                this.roundsButton.gameObject.SetActive(true);
+                this.roundsButton.GetComponent<Button>().enabled = true;
             }
             else
             {
                 this.gameModeButton.gameObject.SetActive(false);
                 this.gameModeButton.GetComponent<Button>().enabled = false;
+                this.roundsButton.gameObject.SetActive(false);
+                this.roundsButton.GetComponent<Button>().enabled = false;
             }
 
             // necessary for VersusDisplay characters to render in the correct order
@@ -568,7 +617,7 @@ namespace RWF
 
                 // GamemodeScrollView.SetGameMode(GameModeManager.CurrentHandler?.Name);
                 // PrivateRoomHandler.instance.gameModeText.text = GameModeManager.CurrentHandler?.Name?.ToUpper() ?? "";
-                PrivateRoomHandler.instance.gamemodeHeaderText.text = GameModeManager.CurrentHandler?.Name?.ToUpper() ?? "";
+                PrivateRoomHandler.instance.RefreshGamemodeHeader();
             }
 
             /* The local player's nickname is also set in NetworkConnectionHandler::OnJoinedRoom, but we'll do it here too so we don't
@@ -750,7 +799,7 @@ namespace RWF
             GameModeManager.SetGameMode(gameMode);
             GameModeManager.CurrentHandler.SetSettings(settings);
 
-            PrivateRoomHandler.instance.gamemodeHeaderText.text = GameModeManager.CurrentHandler?.Name?.ToUpper() ?? "";
+            PrivateRoomHandler.instance.RefreshGamemodeHeader();
 
             NetworkingManager.RPC(typeof(PrivateRoomHandler), nameof(PrivateRoomHandler.SetGameSettingsResponse), PhotonNetwork.LocalPlayer.ActorNumber);
         }

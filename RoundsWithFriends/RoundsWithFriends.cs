@@ -133,6 +133,54 @@ namespace RWF
         public const string MaxPlayersKey = "maxPlayers";
         public const string MaxTeamsKey = "maxTeams";
         public const string MaxClientsKey = "maxClients";
+        public const string RoundsToWinGameKey = "roundsToWinGame";
+
+        public int RoundsToWinGame
+        {
+            get
+            {
+                int rounds = PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey(RWFMod.RoundsToWinGameKey), 5);
+                return rounds == 3 ? 3 : 5;
+            }
+        }
+
+        public void SetRoundsToWinGame(int rounds)
+        {
+            rounds = rounds == 3 ? 3 : 5;
+            PlayerPrefs.SetInt(RWFMod.GetCustomPropertyKey(RWFMod.RoundsToWinGameKey), rounds);
+            if (this.localRoundsLabel != null)
+            {
+                this.localRoundsLabel.text = $"ROUNDS: {rounds}";
+            }
+            foreach (IGameModeHandler handler in GameModeManager.Handlers.Values)
+            {
+                if (handler?.Settings != null && handler.Settings.ContainsKey(RWFMod.RoundsToWinGameKey))
+                {
+                    handler.ChangeSetting(RWFMod.RoundsToWinGameKey, rounds);
+                }
+            }
+        }
+
+        public int ToggleRoundsToWinGame()
+        {
+            int rounds = this.RoundsToWinGame == 3 ? 5 : 3;
+            this.SetRoundsToWinGame(rounds);
+            return rounds;
+        }
+
+        void ApplyRoundsToWinGame()
+        {
+            if (!(PhotonNetwork.OfflineMode || PhotonNetwork.CurrentRoom == null || PhotonNetwork.IsMasterClient))
+            {
+                return;
+            }
+
+            IGameModeHandler handler = GameModeManager.CurrentHandler;
+            if (handler?.Settings != null && handler.Settings.ContainsKey(RWFMod.RoundsToWinGameKey))
+            {
+                handler.ChangeSetting(RWFMod.RoundsToWinGameKey, this.RoundsToWinGame);
+            }
+        }
 
         public int MaxClients
         {
@@ -177,6 +225,7 @@ namespace RWF
         public bool IsCeaseFire { get; private set; }
 
         public Text infoText;
+        TextMeshProUGUI localRoundsLabel;
         private Dictionary<string, bool> soundEnabled;
         private Dictionary<string, bool> gmInitialized;
 
@@ -202,7 +251,7 @@ namespace RWF
         public void Start()
         {
             // register credits with unbound
-            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/olavim/RoundsWithFriends", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
+            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/Baganovski/RoundsMod", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu(RWFMod.ModName, () => { }, this.GUI, null, false);
@@ -223,6 +272,7 @@ namespace RWF
 
             GameModeManager.OnGameModeChanged += (gm) =>
             {
+                this.ApplyRoundsToWinGame();
                 this.RedrawCharacterSelections();
                 this.RedrawCharacterCreators();
 
@@ -360,6 +410,8 @@ namespace RWF
             {
                 this.gmInitialized[ID] = true;
             }
+
+            this.ApplyRoundsToWinGame();
 
             yield break;
         }
@@ -865,7 +917,34 @@ namespace RWF
                     KeybindHints.CreateLocalHints();
                 });
             }
+
+            this.CreateLocalRoundsButton(localGameModeGroupGo);
             yield break;
+        }
+
+        void CreateLocalRoundsButton(GameObject parent)
+        {
+            if (parent.transform.Find("RoundsToWin") != null)
+            {
+                return;
+            }
+
+            GameObject button = MenuHandler.CreateButton($"ROUNDS: {this.RoundsToWinGame}", parent, () =>
+            {
+                int rounds = this.ToggleRoundsToWinGame();
+                if (this.localRoundsLabel != null)
+                {
+                    this.localRoundsLabel.text = $"ROUNDS: {rounds}";
+                }
+            });
+            button.name = "RoundsToWin";
+            this.localRoundsLabel = button.GetComponentInChildren<TextMeshProUGUI>();
+
+            Transform back = parent.transform.Find("Back");
+            if (back != null)
+            {
+                button.transform.SetSiblingIndex(back.GetSiblingIndex());
+            }
         }
     }
 }

@@ -139,7 +139,7 @@ namespace RWF.GameModes
         {
             base.ChangeSetting(name, value);
 
-            if (name == "roundsToWinGame")
+            if (name == "roundsToWinGame" && UIHandler.instance != null)
             {
                 UIHandler.instance.InvokeMethod("SetNumberOfRounds", (int) value);
             }

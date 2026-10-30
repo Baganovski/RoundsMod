@@ -23,6 +23,13 @@ namespace RWF
         {
             RoundEndHandler.instance = this;
             GameModeManager.AddHook(GameModeHooks.HookRoundEnd, this.OnRoundEnd);
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, this.OnGameStart);
+        }
+
+        private IEnumerator OnGameStart(IGameModeHandler gm)
+        {
+            this.gmOriginalMaxRounds = -1;
+            yield break;
         }
 
         private IEnumerator OnRoundEnd(IGameModeHandler gm)
@@ -179,6 +186,8 @@ namespace RWF
                 {
                     PrivateRoomHandler.RestoreSettings();
                 }
+
+                RoundEndHandler.instance.gmOriginalMaxRounds = -1;
             }
         }
     }

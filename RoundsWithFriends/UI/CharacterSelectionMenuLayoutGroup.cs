@@ -168,6 +168,10 @@ namespace RWF.UI
             }
 
             this.UpdateJoinPrompt();
+            if (Input.GetKeyDown(KeyCode.R) && RWFMod.instance != null)
+            {
+                RWFMod.instance.ToggleRoundsToWinGame();
+            }
             // update the members of the layout, one frame delay
             for (int i = 0; i < this.players; i++)
             {
