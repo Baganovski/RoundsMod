@@ -12,7 +12,6 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Photon.Pun.UtilityScripts;
 using ExitGames.Client.Photon;
-using Jotunn.Utils;
 using RWF.UI;
 using On;
 using UnboundLib.Utils.UI;
@@ -106,23 +105,6 @@ namespace RWF
                 obj = "null";
             }
             instance.Logger.LogInfo(obj);
-        }
-
-        public static bool IsSteamConnected
-        {
-            get
-            {
-                try
-                {
-                    Steamworks.InteropHelp.TestIfAvailableClient();
-                    return true;
-                }
-                catch (Exception e)
-                {
-                    _ = e;
-                    return false;
-                }
-            }
         }
 
         public const int MaxPlayersHardLimit = 32;
@@ -243,8 +225,6 @@ namespace RWF
 
         public DebugOptions debugOptions = new DebugOptions();
 
-        public static AssetBundle gmUIBundle;
-
         public void Awake()
         {
             RWFMod.instance = this;
@@ -253,6 +233,7 @@ namespace RWF
             {
                 Patches.PatchUtils.ApplyPatches(ModId);
                 this.Logger.LogInfo("initialized");
+                this.Logger.LogInfo("Baganovski local build");
             }
             catch (Exception e)
             {
@@ -263,7 +244,7 @@ namespace RWF
         public void Start()
         {
             // register credits with unbound
-            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/Baganovski/RoundsMod", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
+            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)", "Baganovski (Local version and main menu)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/Baganovski/RoundsMod", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu(RWFMod.ModName, () => { }, this.GUI, null, false);
@@ -279,8 +260,7 @@ namespace RWF
                 PhotonNetwork.LocalPlayer.SetModded();
             });
 
-            GameModeManager.AddHandler<GameModes.GM_Deathmatch>("Deathmatch", new GameModes.DeathmatchHandler());
-            GameModeManager.AddHandler<GameModes.GM_TeamDeathmatch>("Team Deathmatch", new GameModes.TeamDeathmatchHandler());
+            this.StartCoroutine(this.RegisterGameModesWhenReady());
 
             GameModeManager.OnGameModeChanged += (gm) =>
             {
@@ -317,8 +297,6 @@ namespace RWF
 
                 PhotonPeer.RegisterType(typeof(DebugOptions), 77, DebugOptions.Serialize, DebugOptions.Deserialize);
             }
-            PhotonPeer.RegisterType(typeof(LobbyCharacter), 78, LobbyCharacter.Serialize, LobbyCharacter.Deserialize);
-
             // add beta text
             if (BETA) { BetaTextHandler.AddBetaText(true); }
 
@@ -326,16 +304,375 @@ namespace RWF
             {
                 orig(self);
 
-                // add beta text
                 if (BETA) { BetaTextHandler.AddBetaText(true); }
             };
+        }
 
-
-            // load the assetbundle for the gamemode ui
-            RWFMod.gmUIBundle = AssetUtils.LoadAssetBundleFromResources("rwf_lobbyui", typeof(RWFMod).Assembly);
-            if (RWFMod.gmUIBundle == null)
+        IEnumerator RegisterGameModesWhenReady()
+        {
+            const float timeout = 10f;
+            float elapsed = 0f;
+            while (MainMenuHandler.instance == null && elapsed < timeout)
             {
-                Debug.LogError("Could not load gamemode UI bundle!");
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            this.RegisterLocalGameMode("Deathmatch", new GameModes.DeathmatchHandler());
+            this.RegisterLocalGameMode("Team Deathmatch", new GameModes.TeamDeathmatchHandler());
+        }
+
+        void RegisterLocalGameMode(string id, UnboundLib.GameModes.IGameModeHandler handler)
+        {
+            try
+            {
+                if (GameModeManager.Handlers.ContainsKey(id))
+                {
+                    return;
+                }
+
+                if (id == "Deathmatch")
+                {
+                    GameModeManager.AddHandler<GameModes.GM_Deathmatch>(id, handler);
+                }
+                else
+                {
+                    GameModeManager.AddHandler<GameModes.GM_TeamDeathmatch>(id, handler);
+                }
+            }
+            catch (Exception e)
+            {
+                this.Logger.LogError(e);
+            }
+        }
+
+        internal IEnumerator BrandMainMenu()
+        {
+            const float seconds = 15f;
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                try
+                {
+                    this.ApplyMainMenuBrand();
+                }
+                catch (Exception e)
+                {
+                    this.Logger.LogError(e);
+                }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            try
+            {
+                this.ApplyMainMenuBrand();
+            }
+            catch (Exception e)
+            {
+                this.Logger.LogError(e);
+            }
+        }
+
+        internal void ApplyMainMenuBrand()
+        {
+            this.HideCornerLinks();
+
+            if (MainMenuHandler.instance == null)
+            {
+                return;
+            }
+
+            Transform canvas = MainMenuHandler.instance.transform.Find("Canvas");
+            if (canvas != null)
+            {
+                this.HideOnlineMenu(canvas.gameObject);
+            }
+
+            Transform title = canvas != null ? canvas.Find("Unbound Text Object") : null;
+            TextMeshProUGUI unboundLabel = title != null
+                ? title.GetComponent<TextMeshProUGUI>()
+                : GameObject.Find("Unbound Text Object")?.GetComponent<TextMeshProUGUI>();
+            this.StyleUnboundTitle(unboundLabel);
+            this.SyncStampVisibility();
+
+            Transform group = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group");
+            if (group != null)
+            {
+                for (int i = 0; i < group.childCount; i++)
+                {
+                    this.StyleUnboundTitle(group.GetChild(i).GetComponent<TextMeshProUGUI>());
+                }
+            }
+        }
+
+        void HideCornerLinks()
+        {
+            if (MainMenuHandler.instance == null)
+            {
+                return;
+            }
+
+            Transform canvas = MainMenuHandler.instance.transform.Find("Canvas");
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Transform[] descendants = canvas.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < descendants.Length; i++)
+            {
+                Transform child = descendants[i];
+                if (child.name.StartsWith("Links"))
+                {
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        void StyleUnboundTitle(TextMeshProUGUI label)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            string text = label.text;
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            text = text.Trim();
+            if (!text.Equals("UNBOUND", StringComparison.OrdinalIgnoreCase)
+                && !text.Equals("Baganovski's Mod", StringComparison.OrdinalIgnoreCase)
+                && !text.Equals(RWFMod.StampText, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            label.text = RWFMod.StampText;
+            label.color = new Color(0f, 0f, 0f, 0f);
+            label.raycastTarget = false;
+
+            if (label.gameObject.name == "Unbound Text Object")
+            {
+                this.PlaceStamp(label);
+            }
+        }
+
+        const string StampText = "BAG'S MOD";
+        const string StampFrameName = "BagStampFrame";
+        static readonly Color StampGreen = new Color(0.25f, 0.95f, 0.35f, 1f);
+        static Sprite stampSprite;
+
+        void PlaceStamp(TextMeshProUGUI label)
+        {
+            Transform gap = this.StampGap();
+            if (gap == null)
+            {
+                return;
+            }
+
+            if (label.transform.parent != gap)
+            {
+                label.transform.SetParent(gap, false);
+            }
+
+            RectTransform rect = label.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, 22f);
+            rect.sizeDelta = new Vector2(420f, 56f);
+            rect.localScale = Vector3.one;
+            rect.localRotation = Quaternion.identity;
+
+            label.fontSize = 26f;
+            label.enableAutoSizing = false;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableWordWrapping = false;
+            label.overflowMode = TextOverflowModes.Overflow;
+
+            this.EnsurePixelTitle(label);
+            Transform frame = gap.Find(RWFMod.StampFrameName);
+            if (frame != null)
+            {
+                frame.gameObject.SetActive(false);
+            }
+        }
+
+        Transform StampGap()
+        {
+            if (MainMenuHandler.instance == null)
+            {
+                return null;
+            }
+
+            Transform group = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group");
+            if (group == null)
+            {
+                return null;
+            }
+
+            this.FitMainMenuLogo(group);
+            RectTransform groupRect = group.GetComponent<RectTransform>();
+            if (groupRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(groupRect);
+            }
+
+            return group.Find("TitleGap");
+        }
+
+        void EnsurePixelTitle(TextMeshProUGUI label)
+        {
+            const int pixel = 5;
+            const int letterGap = 3;
+            const int glyphWidth = 5;
+            const int glyphHeight = 7;
+            Transform existing = label.transform.Find("PixelTitle");
+            if (existing != null)
+            {
+                RectTransform existingRect = existing.GetComponent<RectTransform>();
+                if (existingRect != null && Mathf.Approximately(existingRect.sizeDelta.y, glyphHeight * pixel))
+                {
+                    return;
+                }
+
+                UnityEngine.Object.Destroy(existing.gameObject);
+            }
+
+            GameObject root = new GameObject("PixelTitle");
+            root.transform.SetParent(label.transform, false);
+            RectTransform rootRect = root.AddComponent<RectTransform>();
+            rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+            rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.anchoredPosition = Vector2.zero;
+
+            string text = RWFMod.StampText;
+            int cursor = 0;
+            int width = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == ' ')
+                {
+                    width += pixel * 3;
+                    continue;
+                }
+
+                width += glyphWidth * pixel;
+                if (i < text.Length - 1 && text[i + 1] != ' ')
+                {
+                    width += letterGap;
+                }
+            }
+
+            rootRect.sizeDelta = new Vector2(width, glyphHeight * pixel);
+            for (int i = 0; i < text.Length; i++)
+            {
+                char character = text[i];
+                if (character == ' ')
+                {
+                    cursor += pixel * 3;
+                    continue;
+                }
+
+                int[] rows;
+                if (!RWFMod.PixelGlyphs.TryGetValue(character, out rows))
+                {
+                    cursor += glyphWidth * pixel + letterGap;
+                    continue;
+                }
+
+                for (int y = 0; y < rows.Length; y++)
+                {
+                    int bits = rows[y];
+                    for (int x = 0; x < glyphWidth; x++)
+                    {
+                        if ((bits & (1 << (glyphWidth - 1 - x))) == 0)
+                        {
+                            continue;
+                        }
+
+                        GameObject dot = new GameObject("Px");
+                        dot.transform.SetParent(root.transform, false);
+                        RectTransform dotRect = dot.AddComponent<RectTransform>();
+                        dotRect.anchorMin = new Vector2(0f, 1f);
+                        dotRect.anchorMax = new Vector2(0f, 1f);
+                        dotRect.pivot = new Vector2(0f, 1f);
+                        dotRect.sizeDelta = new Vector2(pixel, pixel);
+                        dotRect.anchoredPosition = new Vector2(cursor + x * pixel, -(y * pixel));
+                        Image image = dot.AddComponent<Image>();
+                        image.sprite = RWFMod.StampSprite;
+                        image.color = RWFMod.StampGreen;
+                        image.raycastTarget = false;
+                    }
+                }
+
+                cursor += glyphWidth * pixel + letterGap;
+            }
+        }
+
+        static readonly Dictionary<char, int[]> PixelGlyphs = new Dictionary<char, int[]>
+        {
+            { 'A', new[] { 0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 } },
+            { 'B', new[] { 0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110 } },
+            { 'D', new[] { 0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110 } },
+            { 'G', new[] { 0b01111, 0b10000, 0b10000, 0b10111, 0b10001, 0b10001, 0b01111 } },
+            { 'M', new[] { 0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001 } },
+            { 'O', new[] { 0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 } },
+            { 'S', new[] { 0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110 } },
+            { '\'', new[] { 0b00110, 0b00110, 0b01100, 0b00000, 0b00000, 0b00000, 0b00000 } },
+        };
+
+        static Sprite StampSprite
+        {
+            get
+            {
+                if (RWFMod.stampSprite == null)
+                {
+                    Texture2D texture = Texture2D.whiteTexture;
+                    RWFMod.stampSprite = Sprite.Create(
+                        texture,
+                        new Rect(0f, 0f, texture.width, texture.height),
+                        new Vector2(0.5f, 0.5f),
+                        100f);
+                }
+
+                return RWFMod.stampSprite;
+            }
+        }
+
+        void SyncStampVisibility()
+        {
+            if (MainMenuHandler.instance == null)
+            {
+                return;
+            }
+
+            Transform gap = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group/TitleGap");
+            if (gap == null)
+            {
+                return;
+            }
+
+            bool show = ListMenu.instance != null
+                && ListMenu.instance.selectedPage != null
+                && ListMenu.instance.selectedPage.name == "Main";
+
+            Transform label = gap.Find("Unbound Text Object");
+            if (label != null && label.gameObject.activeSelf != show)
+            {
+                label.gameObject.SetActive(show);
+            }
+
+            Transform frame = gap.Find(RWFMod.StampFrameName);
+            if (frame != null && frame.gameObject.activeSelf != show)
+            {
+                frame.gameObject.SetActive(show);
             }
         }
 
@@ -352,6 +689,8 @@ namespace RWF
 
         public void Update()
         {
+            this.SyncStampVisibility();
+
             if (RWFMod.DEBUG && Input.GetKeyDown(KeyCode.F8))
             {
                 var debugWindow = this.gameObject.GetComponent<DebugWindow>();
@@ -451,6 +790,9 @@ namespace RWF
                 {
                     ArtHandler.instance.NextArt();
                 });
+
+                this.ExecuteAfterSeconds(2.5f, this.ApplyMainMenuBrand);
+                this.ExecuteAfterSeconds(5f, this.ApplyMainMenuBrand);
             }
         }
 
@@ -524,7 +866,14 @@ namespace RWF
 
         public void SetupGameModes()
         {
-            GameModeManager.RemoveHandler(GameModeManager.ArmsRaceID);
+            try
+            {
+                GameModeManager.RemoveHandler(GameModeManager.ArmsRaceID);
+            }
+            catch (Exception e)
+            {
+                this.Logger.LogError(e);
+            }
         }
 
         public void InjectUIElements()
@@ -563,24 +912,7 @@ namespace RWF
                 }
             }
 
-            if (!gameGo.transform.Find("PrivateRoom"))
-            {
-                var privateRoomGo = new GameObject("PrivateRoom");
-                privateRoomGo.transform.SetParent(gameGo.transform);
-                privateRoomGo.transform.localScale = Vector3.one;
-
-                privateRoomGo.AddComponent<PrivateRoomHandler>();
-
-                var inviteFriendGo = mainMenuGo.transform.Find("ListSelector").Find("Online").Find("Group").Find("Invite friend").gameObject;
-                GameObject.DestroyImmediate(inviteFriendGo.GetComponent<Button>());
-                var button = inviteFriendGo.AddComponent<Button>();
-
-                button.onClick.AddListener(() =>
-                {
-                    PrivateRoomHandler.instance.Open();
-                    NetworkConnectionHandler.instance.HostPrivate();
-                });
-            }
+            this.HideOnlineMenu(mainMenuGo);
 
             if (!charGo.transform.Find("Creator_Local" + this.MaxPlayers))
             {
@@ -644,6 +976,7 @@ namespace RWF
                 if (count != lastCount || lateButtons)
                 {
                     this.NormalizeMainMenuLayout(mainMenuGo);
+                    this.ApplyMainMenuBrand();
                     lastCount = group != null ? group.childCount : count;
                 }
 
@@ -742,6 +1075,102 @@ namespace RWF
             modsButton.setBarHeight = 0f;
         }
 
+        void HideOnlineMenu(GameObject mainMenuGo)
+        {
+            if (mainMenuGo == null)
+            {
+                return;
+            }
+
+            Transform listSelector = mainMenuGo.transform.Find("ListSelector");
+            if (listSelector == null)
+            {
+                listSelector = mainMenuGo.name == "ListSelector" ? mainMenuGo.transform : null;
+            }
+            if (listSelector == null)
+            {
+                return;
+            }
+
+            Transform group = listSelector.Find("Main/Group");
+            if (group == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < group.childCount; i++)
+            {
+                Transform child = group.GetChild(i);
+                if (!this.IsOnlineEntry(child))
+                {
+                    continue;
+                }
+
+                this.SelectAwayFrom(group, child);
+                child.gameObject.SetActive(false);
+            }
+
+            Transform onlinePage = listSelector.Find("Online");
+            if (onlinePage != null)
+            {
+                onlinePage.gameObject.SetActive(false);
+            }
+        }
+
+        bool IsOnlineEntry(Transform child)
+        {
+            if (child == null)
+            {
+                return false;
+            }
+
+            if (child.name.IndexOf("online", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            TextMeshProUGUI label = child.GetComponent<TextMeshProUGUI>();
+            if (label == null)
+            {
+                label = child.GetComponentInChildren<TextMeshProUGUI>(true);
+            }
+
+            return label != null && label.text.IndexOf("online", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        void SelectAwayFrom(Transform group, Transform avoid)
+        {
+            ListMenu menu = group.GetComponentInParent<ListMenu>();
+            if (menu == null || menu.selectedButton == null)
+            {
+                return;
+            }
+
+            Transform selected = menu.selectedButton.transform;
+            if (selected != avoid && !selected.IsChildOf(avoid))
+            {
+                return;
+            }
+
+            for (int i = 0; i < group.childCount; i++)
+            {
+                Transform child = group.GetChild(i);
+                if (child == avoid || !child.gameObject.activeInHierarchy || this.IsOnlineEntry(child))
+                {
+                    continue;
+                }
+
+                ListMenuButton button = child.GetComponent<ListMenuButton>();
+                if (button == null)
+                {
+                    continue;
+                }
+
+                button.OnPointerEnter(null);
+                return;
+            }
+        }
+
         internal void NormalizeMainMenuLayout(GameObject mainMenuGo = null)
         {
             if (mainMenuGo == null && MainMenuHandler.instance != null)
@@ -769,6 +1198,7 @@ namespace RWF
             }
 
             main.position = new Vector3(0f, 1.7f, main.position.z);
+            this.HideOnlineMenu(mainMenuGo);
 
             try
             {
@@ -831,7 +1261,7 @@ namespace RWF
             logoLayout.minHeight = 80f;
             logoLayout.preferredHeight = 80f;
 
-            const float titleGap = 36f;
+            const float titleGap = 112f;
             Transform spacer = group.Find("TitleGap");
             if (spacer == null)
             {

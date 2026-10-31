@@ -1,6 +1,6 @@
 {
 	"name": "RoundsWithFriends",
-	"description": "ROUNDS multiplayer extension",
+	"description": "Local multiplayer for up to 16 players",
 	"version_number": "#VERSION#",
 	"dependencies": [
 		"BepInEx-BepInExPack_ROUNDS-5.4.1100",

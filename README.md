@@ -1,10 +1,10 @@
 # Rounds With Friends
  
-A [ROUNDS](https://landfall.se/rounds) mod to extend the game's multiplayer capabilities, built for [BepInEx](https://github.com/BepInEx/BepInEx).
+A [ROUNDS](https://landfall.se/rounds) mod for local multiplayer, built for [BepInEx](https://github.com/BepInEx/BepInEx).
 
 ## Current Features
 
-The mod supports up to 16 players in local and private online lobbies.
+The mod supports up to 16 players in local matches.
 
 ### Team Deathmatch
 
@@ -17,6 +17,13 @@ Deathmatch follows the heart of the original team deathmatch game mode, but now 
 ### Continue or rematch
 
 After the game ends, you can choose to play a little longer, or to start a new game.
+
+## Credits
+
+- Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, fair pick orders)
+- Pykess (More than 4 players, multiple players per client, additional player colors, disconnect handling, UI)
+- BossSloth (Gamemode selection UI)
+- Baganovski (Local version and main menu)
 
 ## Changelog
 

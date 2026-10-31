@@ -155,17 +155,6 @@ namespace RWF.UI
             hintGO.SetActive(true);
             hintGO.transform.localScale = Vector3.one;
         }
-        public static void CreateOnlineHints()
-        {
-            KeybindHints.ClearHints();
-            if (PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey("ShowKeybinds"), 1) == 0) { return; }
-            KeybindHints.AddHint("Interact", "Select Player Bar");
-            KeybindHints.AddHint("Exit Player Menu", new string[] { "[Q/Esc]", "[B/Start]" });
-            KeybindHints.AddHint("Join/Ready", "jump");
-            KeybindHints.AddHint("Select face", "Left/right");
-            KeybindHints.AddHint("select team", new string[] { "[W/S]", "[Dpad left/right]" });
-        }
-
         class RoundsChangeHint : MonoBehaviour
         {
             int lastRounds = -1;

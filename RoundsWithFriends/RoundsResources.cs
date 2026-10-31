@@ -22,8 +22,17 @@ namespace RWF
             {
                 if (!_menuFont && MainMenuHandler.instance)
                 {
-                    var localGo = MainMenuHandler.instance.transform.Find("Canvas").Find("ListSelector").Find("Main").Find("Group").Find("Local").gameObject;
-                    _menuFont = localGo.GetComponentInChildren<TextMeshProUGUI>().font;
+                    Transform local = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group/Local");
+                    if (local == null)
+                    {
+                        local = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group/LOCAL");
+                    }
+
+                    TextMeshProUGUI label = local != null ? local.GetComponentInChildren<TextMeshProUGUI>(true) : null;
+                    if (label != null)
+                    {
+                        _menuFont = label.font;
+                    }
                 }
 
                 return _menuFont;

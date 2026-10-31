@@ -4,7 +4,6 @@ using UnboundLib;
 using UnityEngine;
 using System.Reflection.Emit;
 using RWF.UI;
-using Photon.Pun;
 
 namespace RWF.Patches
 {
@@ -13,12 +12,7 @@ namespace RWF.Patches
     {
         static void CallPlayerJoinedOffline(PlayerManager playerManager, Player player)
         {
-            // we only want to call PlayerJoined when offline here to prevent double-registering of players online
-            // when online, PlayerJoined will be called in Player.AssignCharacter
-            if (PhotonNetwork.OfflineMode || PhotonNetwork.CurrentRoom == null)
-            {
-                playerManager.PlayerJoined(player);
-            }
+            playerManager.PlayerJoined(player);
         }
 
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)

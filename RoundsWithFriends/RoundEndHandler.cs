@@ -17,7 +17,6 @@ namespace RWF
 
         private int gmOriginalMaxRounds = -1;
         private bool waitingForHost = false;
-        private bool reopenPrivateRoom;
 
 
         public void Awake()
@@ -50,16 +49,8 @@ namespace RWF
                 PlayerManager.instance.RevivePlayers();
                 PlayerManager.instance.InvokeMethod("SetPlayersVisible", false);
 
-                if (PhotonNetwork.IsMasterClient || PhotonNetwork.OfflineMode)
-                {
-                    var choices = new List<string>() { "CONTINUE", "REMATCH", "EXIT" };
-                    UI.PopUpMenu.instance.Open(choices, this.OnGameOverChoose);
-                }
-                else
-                {
-                    string hostName = PhotonNetwork.CurrentRoom.Players.Values.First(p => p.IsMasterClient).NickName;
-                    UIHandler.instance.ShowJoinGameText($"WAITING FOR {hostName}", PlayerSkinBank.GetPlayerSkinColors(1).winText);
-                }
+                var choices = new List<string>() { "CONTINUE", "REMATCH", "EXIT" };
+                UI.PopUpMenu.instance.Open(choices, this.OnGameOverChoose);
 
                 MapManager.instance.LoadNextLevel(false, false);
 
@@ -167,8 +158,6 @@ namespace RWF
                 }
             }
 
-            // Online matches return to the private lobby. Local matches stay on the main menu.
-            RoundEndHandler.instance.reopenPrivateRoom = !PhotonNetwork.OfflineMode;
             SceneManager.sceneLoaded += RoundEndHandler.OnSceneLoad;
 
             gm.GameMode.StopAllCoroutines();
@@ -182,16 +171,6 @@ namespace RWF
             if (scene.name == "Main")
             {
                 SceneManager.sceneLoaded -= RoundEndHandler.OnSceneLoad;
-                if (RoundEndHandler.instance.reopenPrivateRoom)
-                {
-                    PrivateRoomHandler.instance.Open();
-
-                    if (PhotonNetwork.IsMasterClient)
-                    {
-                        PrivateRoomHandler.RestoreSettings();
-                    }
-                }
-
                 RoundEndHandler.instance.gmOriginalMaxRounds = -1;
             }
         }

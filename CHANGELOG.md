@@ -1,3 +1,8 @@
+## Local build
+
+- Removed private online lobbies, Steam invites, and the main-menu Online entry. Local matches stay.
+- Main menu shows a larger green pixel-font "BAG'S MOD" under the ROUNDS logo, with space before the buttons. It hides on the other menu pages. The bottom-right Discord and website links are hidden.
+
 ## v2.2.0
 
 Glory to [pdcook](https://github.com/pdcook):

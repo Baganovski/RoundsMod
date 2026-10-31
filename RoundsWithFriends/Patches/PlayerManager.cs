@@ -52,19 +52,6 @@ namespace RWF.Patches
         }
     }
 
-    [HarmonyPatch(typeof(PlayerManager), "PlayerJoined")]
-    class PlayerManager_Patch_PlayerJoined
-    {
-        static void Postfix(Player player)
-        {
-            if (!PhotonNetwork.OfflineMode)
-            {
-                PrivateRoomHandler.instance.PlayerJoined(player);
-            }
-        }
-    }
-
-
     [HarmonyPatch(typeof(PlayerManager), "RemovePlayers")]
     class PlayerManager_Patch_RemovePlayers
     {

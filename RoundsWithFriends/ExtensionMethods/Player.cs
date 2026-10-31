@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using UnboundLib;
-using Photon.Pun;
 using UnboundLib.Extensions;
 // ReSharper disable NotAccessedField.Local
 
@@ -12,13 +11,11 @@ namespace RWF
     {
         public int localID;
         private int uniqueID; // this value is not meant to be read or written directly. only through PlayerExtensions.Get/SetUniqueID
-        public LobbyCharacter character;
 
         public PlayerAdditionalData()
         {
             this.localID = 0;
             this.uniqueID = 1;
-            this.character = null;
         }
     }
     public static class PlayerExtensions
@@ -38,21 +35,6 @@ namespace RWF
                 data.Add(player, value);
             }
             catch (Exception) { }
-        }
-
-        public static void AssignCharacter(this Player instance, LobbyCharacter character, int playerID)
-        {
-            instance.GetAdditionalData().character = character;
-
-            PhotonNetwork.LocalPlayer.SetCharacter(character);
-
-            instance.AssignLocalID(character.localID);
-            instance.AssignUniqueID(character.uniqueID);
-            instance.AssignColorID(character.colorID);
-            instance.AssignTeamID(character.teamID);
-            instance.AssignPlayerID(playerID);
-
-            PlayerManager.instance.PlayerJoined(instance);
         }
 
         public static void AssignUniqueID(this Player instance, int uniqueID)

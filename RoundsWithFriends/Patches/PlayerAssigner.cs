@@ -15,13 +15,6 @@ namespace RWF.Patches
     [HarmonyPatch(typeof(PlayerAssigner), "LateUpdate")]
     class PlayerAssigner_Patch_LateUpdate
     {
-        static bool Prefix() {
-            // When playing in a private match, we want to pretty much ignore this function since we handle player joins in PrivateRoomHandler
-            return PhotonNetwork.OfflineMode ||
-                NetworkConnectionHandler.instance.IsSearchingQuickMatch() ||
-                NetworkConnectionHandler.instance.IsSearchingTwitch();
-        }
-
         static void Postfix(PlayerAssigner __instance, bool ___playersCanJoin)
         {
             if (RWFMod.DEBUG)
