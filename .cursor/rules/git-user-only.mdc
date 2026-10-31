@@ -1,0 +1,12 @@
+---
+description: Leave staging, commits, and pushes to the user
+alwaysApply: true
+---
+
+# Git stays with the user
+
+Do not stage, commit, or push. The user does that.
+
+- Leave the index alone. Do not `git add`, `git commit`, `git push`, or amend.
+- If a task would need something staged, committed, or pushed, stop and ask first.
+- Only stage, commit, or push after the user explicitly asks in that turn, including when they invoke `/commit`.

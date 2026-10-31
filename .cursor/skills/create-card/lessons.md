@@ -9,17 +9,18 @@ Preferences and corrections from making cards in this project. The create-card s
 
 ## Art
 
-- Art should match the vanilla cards: square, transparent background, bold illustrated style. The frame, title, and stat lines stay the game's.
-- Vanilla face reference screenshots are `RoundsWithFriends/Cards/Reference/unmodded-frost-slam.png` and `big-bullet.png`. The colored number is the stat amount, then the label. Green helps the picker. Red is a cost. A unique effect is a short white description.
-- Lee Luck has no art yet. Do not reuse the vanilla screenshots as its picture. `GetCardArt()` is abstract, so return `null` until there is art.
+- Do not put artwork on custom cards. `GetCardArt()` is still required; return an empty `GameObject` and leave the art window blank.
+- Vanilla face reference screenshots are `RoundsWithFriends/Cards/Reference/unmodded-frost-slam.png` and `big-bullet.png`. Match that layout for title, description, and stat lines.
+- When Lee Luck ignores a hit, the word `MISS` pops up from the player and fades. That feedback is separate from the card face.
 
 ## Design
 
-- Stat lines are labels. Gameplay comes from `SetupCard`, or from `OnAddCard` when the catalog says the field is not copied.
+- Stat lines are labels. Gameplay comes from `SetupCard`, or from `OnAddCard` when no catalog field does the job.
 - The user wants feedback on the card itself: whether the face matches the effect, and whether the strength fits the rarity.
+- A unique effect is a short description plus a colored stat whose amount is the number (`Every 10s`) and whose label is the effect (`Ignore a hit`).
 
 ## Mechanics
 
 - The field catalog and no-change values live in `CustomCards.md` at the project root. Update that file when a mechanic turns out different, and note the correction here.
 - Ignoring a hit is not a copied stat. `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)` applies one damage instance. A prefix that returns false skips that instance. Put the timer on a component added in `OnAddCard` and destroy it in `OnRemoveCard`.
-- Lee Luck ignores the first hit as soon as it is picked, then one hit every 5 seconds. Zero-damage calls do not spend the ignore. It is Uncommon, cannot be taken twice, and has no downside. Extra copies, if something adds them, shorten that wait.
+- Lee Luck ignores the first hit as soon as it is picked, then one hit every 10 seconds. Zero-damage calls do not spend the ignore. It is Uncommon, cannot be taken twice, and has no downside. Extra copies, if something adds them, shorten that wait.

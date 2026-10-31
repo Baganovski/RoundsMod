@@ -2,9 +2,9 @@
 name: create-card
 description: >-
   Design, critique, and implement a ROUNDS custom card with UnboundLib
-  CustomCard: card face, category, art, gun/player/block stats, and hooks.
+  CustomCard: card face, category, gun/player/block stats, and hooks.
   Use when the user wants to create, design, balance, review, or change a
-  custom card, card art, card category, or card stats.
+  custom card, card category, or card stats.
 ---
 
 # Create a card
@@ -18,7 +18,7 @@ Design the card, give feedback, then implement it in this project. Read [CustomC
 3. Fill the card face and the gameplay together. Stat lines are labels. Only `SetupCard` and the hooks change the game.
 4. Give the feedback below in the reply, then write the class. If the user only asked for a concept, stop after the feedback and wait.
 
-Reuse the category string already used by cards in `RoundsWithFriends/Cards/`. If none exist yet, pick one short category name, use it, and record it in `lessons.md`. Vanilla cards stay in `UNMODDED`.
+Use `LeeLuck.Category` (`Bag's Mod`) for `GetModName()`. Vanilla cards stay in `UNMODDED`. The project compiles as C# 7.1.
 
 ## Required on every card
 
@@ -27,18 +27,37 @@ A class in `RoundsWithFriends/Cards/` under namespace `RWF.Cards`, registered on
 | Piece | Rule |
 | --- | --- |
 | `GetTitle()` | Short name on the card |
-| `GetDescription()` | What it feels like. Leave empty if the stat lines already say it |
-| `GetStats()` | One `CardInfoStat` per visible change. `positive` matches whether that row helps the picker |
+| `GetDescription()` | Short white sentence for a unique effect. Leave empty only when the stat lines already say the whole card |
+| `GetStats()` | One `CardInfoStat` per number. The game draws the colored `amount` first, then the `stat` label. Green (`positive = true`) helps the picker. Red is a cost |
 | `GetRarity()` | `Common`, `Uncommon`, or `Rare`. Rare is offered less often |
 | `GetTheme()` | A `CardThemeColor.CardThemeColorType` that matches the fantasy |
 | `GetModName()` | The shared category. Printed faintly on the card and used by Toggle Cards |
 | `GetEnabled()` | `true` unless the card should be hidden |
-| `GetCardArt()` | Required. A `GameObject` with a `SpriteRenderer`, or `null` when there is no art yet. Square PNG, transparent background, same bold illustrated style as vanilla art. Say when it is null |
+| `GetCardArt()` | Required by UnboundLib, but these cards have no picture. Return `new GameObject("CardArt")` and do not load or embed a sprite |
 | `GetCardBase()` | Do not override |
 | `SetupCard` | Set only copied fields. Leave a field at its no-change value to leave the player alone. Set `cardInfo.allowMultiple` here |
-| `OnAddCard` / `OnRemoveCard` | Only for fields `CustomCards.md` says are not copied. `OnRemoveCard` undoes `OnAddCard` |
+| `OnAddCard` / `OnRemoveCard` | Behaviour the catalog does not copy. `OnRemoveCard` undoes `OnAddCard`, including destroying a component when its stack count hits 0 |
 
 `attackSpeed` below 1 shoots faster. `damage` cannot end under `0.25`. Max ammo ends between 1 and 90. Extra `numberOfProjectiles` also splits `damage` and `knockback` when the gun does not already fire exactly one bullet. `timeToReachFullMovementMultiplier` at 0 wipes the stat; leave it at 1.
+
+Register the card from `RWFMod.Start`, next to `Unbound.RegisterMenu`:
+
+```csharp
+using UnboundLib.Cards;
+using RWF.Cards;
+// ...
+CustomCard.BuildCard<TheCard>();
+```
+
+`PatchUtils.ApplyPatches` already calls `Harmony.PatchAll` on this assembly. A `[HarmonyPatch]` in the card file is enough. Do not register that patch again.
+
+## Behaviour the catalog cannot copy
+
+`Player` and `HealthHandler` are on the same GameObject. Add a component to `player.gameObject` in `OnAddCard`. One damage instance is `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)`. A prefix that returns false skips that call. Name the prefix argument `damage`, or Harmony will not pass the vector in. Ignore a zero-length `damage` without spending a charge.
+
+An upside with no cost is Uncommon or Rare, and `allowMultiple` stays false unless the user asked for copies. If copies can still stack, keep one component and shorten its timer by the stack count.
+
+Do not add artwork to new cards. `GetCardArt()` still has to return a `GameObject` because the method is abstract; return an empty object and leave the middle of the card blank. A gameplay word, such as `MISS` when Lee Luck ignores a hit, can rise off the player and fade. That is fight feedback, not a picture on the card.
 
 After the class compiles, build Debug:
 
@@ -52,7 +71,7 @@ Tell the user to restart ROUNDS. The card shows in its category while that categ
 
 Write this before the code, in plain sentences:
 
-- **Face.** Title, description, each stat line (`stat`, `amount`, `positive`), rarity, theme, category, and whether art is included.
+- **Face.** Title, description, each stat line (`stat`, `amount`, `positive`), rarity, theme, and category. These cards have no picture.
 - **Play.** The fields you will set, the value, and the no-change value you are departing from. Name any hook and what `OnRemoveCard` restores.
 - **Read.** Whether a player can tell the effect from the card alone. Call out a stat line that does not match the field, or a field that will not copy from `SetupCard`.
 - **Strength.** What the card gives, what it costs, and how it feels after two copies if `allowMultiple` is true. Prefer a real downside or a higher rarity over a card that is only upside.
@@ -80,9 +99,10 @@ namespace RWF.Cards
         {
             new CardInfoStat { stat = "Damage", amount = "+50%", simepleAmount = CardInfoStat.SimpleAmount.notAssigned, positive = true }
         };
+        protected override GameObject GetCardArt() => new GameObject("CardArt");
         protected override CardInfo.Rarity GetRarity() => CardInfo.Rarity.Common;
         protected override CardThemeColor.CardThemeColorType GetTheme() => CardThemeColor.CardThemeColorType.FirepowerYellow;
-        public override string GetModName() => "Category";
+        public override string GetModName() => LeeLuck.Category;
         public override bool GetEnabled() => true;
     }
 }

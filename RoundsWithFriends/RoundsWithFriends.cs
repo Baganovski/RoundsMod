@@ -246,7 +246,22 @@ namespace RWF
         public void Start()
         {
             // register credits with unbound
-            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)", "Baganovski (Local version and main menu)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/Baganovski/RoundsMod", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
+            Unbound.RegisterCredits(RWFMod.ModName, new string[] { "Tilastokeskus (Project creation, 4 player support, Deathmatch, Team Deathmatch, UI, Fair pick orders)", "Pykess (> 4 player support, multiple players per client, additional player colors, disconnect handling, UI)", "BossSloth (Gamemode selection UI)" }, new string[] { "github", "Support Tilastokeskus", "Support Pykess", "Support BossSloth" }, new string[] { "https://github.com/Baganovski/RoundsMod", "https://www.buymeacoffee.com/tilastokeskus", "https://ko-fi.com/pykess", "https://www.buymeacoffee.com/BossSloth" });
+            Unbound.RegisterCredits(
+                RWFMod.BagsCreditsName,
+                new string[]
+                {
+                    "Baganovski (Local version of Rounds With Friends)",
+                    "Online lobbies, Steam invites, and the Online menu are removed. Local matches stay.",
+                    "The main menu shows a green pixel BAG'S MOD under the ROUNDS logo, and hides it on other pages.",
+                    "The corner Discord and website links are hidden.",
+                    "Menu layouts are changed.",
+                    "Matches can be set to 3 or 5.",
+                    "Sandbox powerups are changed.",
+                    "Lee Luck ignores one hit every 10 seconds and shows MISS when it blocks."
+                },
+                "GitHub",
+                "https://github.com/Baganovski/RoundsMod");
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu(RWFMod.ModName, () => { }, this.GUI, null, false);
@@ -399,6 +414,7 @@ namespace RWF
                 : GameObject.Find("Unbound Text Object")?.GetComponent<TextMeshProUGUI>();
             this.StyleUnboundTitle(unboundLabel);
             this.SyncStampVisibility();
+            this.StyleBagsCreditsButton();
 
             Transform group = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/Main/Group");
             if (group != null)
@@ -465,6 +481,7 @@ namespace RWF
             }
         }
 
+        const string BagsCreditsName = "Bag's Mod";
         const string StampText = "BAG'S MOD";
         const string StampFrameName = "BagStampFrame";
         static readonly Color StampGreen = new Color(0.25f, 0.95f, 0.35f, 1f);
@@ -690,9 +707,46 @@ namespace RWF
             MenuHandler.CreateToggle(PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey("ShowKeybinds"), 1) == 1, "Show keybind hints in menus", menu, ShowKeybindsChanged, 30);
         }
 
+        void StyleBagsCreditsButton()
+        {
+            if (MainMenuHandler.instance == null)
+            {
+                return;
+            }
+
+            Transform group = MainMenuHandler.instance.transform.Find("Canvas/ListSelector/CREDITS/Group");
+            if (group == null)
+            {
+                return;
+            }
+
+            Transform bags = group.Find(RWFMod.BagsCreditsName);
+            if (bags == null)
+            {
+                return;
+            }
+
+            Transform rounds = group.Find(RWFMod.ModName);
+            if (rounds != null && bags.GetSiblingIndex() != rounds.GetSiblingIndex() + 1)
+            {
+                bags.SetSiblingIndex(rounds.GetSiblingIndex() + 1);
+            }
+
+            TextMeshProUGUI label = bags.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label == null)
+            {
+                return;
+            }
+
+            label.color = new Color(0f, 0f, 0f, 0f);
+            label.raycastTarget = false;
+            this.EnsurePixelTitle(label);
+        }
+
         public void Update()
         {
             this.SyncStampVisibility();
+            this.StyleBagsCreditsButton();
 
             if (RWFMod.DEBUG && Input.GetKeyDown(KeyCode.F8))
             {

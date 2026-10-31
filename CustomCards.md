@@ -4,7 +4,7 @@ This is the list of things you can change on a card made with UnboundLib (`Custo
 
 A card class has two different jobs:
 
-- **What the card says.** Title, description, stat lines, rarity, theme, and art. The stat lines are labels. They do not change gameplay by themselves.
+- **What the card says.** Title, description, stat lines, rarity, and theme. The stat lines are labels. They do not change gameplay by themselves. These cards leave the art window empty.
 - **What the card does.** Set fields in `SetupCard`. When the card is picked, the game copies those fields onto the player. Use `OnAddCard` only for behaviour the copy does not cover, and undo that in `OnRemoveCard`.
 
 Register a card once at startup with `CustomCard.BuildCard<YourCard>()`. While its category is enabled, it joins the normal pick and the sandbox card list.
@@ -20,7 +20,7 @@ Leave a field at the value in the **No change** column and that part of the play
 | Stat lines | `GetStats()` | The numbers on the card. See below |
 | Rarity | `GetRarity()` | `Common`, `Uncommon`, `Rare`. Rare is offered less often |
 | Theme | `GetTheme()` | Frame color. See below |
-| Art | `GetCardArt()` | The picture in the middle. See below |
+| Art | `GetCardArt()` | Leave empty. See below |
 | Frame | `GetCardBase()` | Leave this. It returns the vanilla card frame |
 | Category | `GetModName()` | Group name in Toggle Cards. Cards that return the same string share a category. The name is also printed faintly in the bottom-left corner of the card. If you do not override it, the category is `Modded` |
 | In the pool | `GetEnabled()` | `true` puts it in the pick and the toggle menu. `false` hides it |
@@ -43,7 +43,7 @@ Each entry is one row on the card.
 
 ### Art
 
-`GetCardArt()` returns a `GameObject`. Put a `SpriteRenderer` on it and assign your sprite. A square PNG with a transparent background, drawn in the same bold illustrated style as the vanilla pictures, sits in the art window. The game draws the frame, title, and stats around it. The theme colors the frame.
+`GetCardArt()` is abstract, so every card still returns a `GameObject`. Return an empty object and do not assign a sprite. The game draws the frame, title, and stats around a blank art window. The theme colors the frame. A word that pops off the player during a fight, such as `MISS`, is gameplay feedback, not a picture on the card.
 
 ## Gun stats
 
@@ -199,8 +199,10 @@ Each entry is an `ObjectsToSpawn`. The game adds it to the player's bullet. Matc
 | Method | When it runs |
 | --- | --- |
 | `SetupCard` | Once, when the card is built. Put stat changes here |
-| `OnAddCard` | When a player receives the card. Use this for behaviour the tables above do not copy |
-| `OnRemoveCard` | When the card is taken off that player. Undo whatever `OnAddCard` changed |
+| `OnAddCard` | When a player receives the card. Use this for behaviour the tables above do not copy. `Player` and `HealthHandler` are on the same object |
+| `OnRemoveCard` | When the card is taken off that player. Undo whatever `OnAddCard` changed, including destroying a component |
+
+One damage instance is `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)`. Nothing in the tables above ignores a hit. A Harmony prefix on `DoDamage` that returns false skips that instance. Name the damage argument `damage`. A zero-length damage vector is not a hit. `PatchUtils.ApplyPatches` already applies `[HarmonyPatch]` types in this assembly.
 | `OnReassignCard` | When the card is moved to another player |
 | `Callback` | Each time a visible copy of the card is created |
 

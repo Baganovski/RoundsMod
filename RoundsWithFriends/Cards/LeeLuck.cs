@@ -7,7 +7,7 @@ namespace RWF.Cards
     public class LeeLuck : CustomCard
     {
         public const string Category = "Bag's Mod";
-        public const float Interval = 5f;
+        public const float Interval = 10f;
 
         public override void SetupCard(CardInfo cardInfo, Gun gun, ApplyCardStats cardStats, CharacterStatModifiers statModifiers, Block block)
         {
@@ -58,7 +58,7 @@ namespace RWF.Cards
                 {
                     positive = true,
                     stat = "Ignore a hit",
-                    amount = "Every 5s",
+                    amount = "Every 10s",
                     simepleAmount = CardInfoStat.SimpleAmount.notAssigned
                 }
             };
@@ -66,7 +66,7 @@ namespace RWF.Cards
 
         protected override GameObject GetCardArt()
         {
-            return null;
+            return new GameObject("LeeLuckArt");
         }
 
         protected override CardInfo.Rarity GetRarity()
@@ -107,6 +107,55 @@ namespace RWF.Cards
         }
     }
 
+    public class LeeLuckMissPopup : MonoBehaviour
+    {
+        const float Life = 0.7f;
+        float age;
+        Vector3 origin;
+        TextMesh text;
+
+        public static void Spawn(Vector3 position)
+        {
+            GameObject popup = new GameObject("MISS");
+            popup.transform.position = position;
+            TextMesh label = popup.AddComponent<TextMesh>();
+            label.text = "MISS";
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.fontSize = 48;
+            label.characterSize = 0.12f;
+            label.fontStyle = FontStyle.Bold;
+            label.color = new Color(0.85f, 0.95f, 1f, 1f);
+            popup.GetComponent<MeshRenderer>().sortingOrder = 500;
+            popup.AddComponent<LeeLuckMissPopup>();
+        }
+
+        void Start()
+        {
+            origin = transform.position;
+            text = GetComponent<TextMesh>();
+            transform.localScale = Vector3.one * 0.25f;
+        }
+
+        void Update()
+        {
+            age += Time.deltaTime;
+            float t = age / Life;
+            if (t >= 1f)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            float pop = t < 0.18f ? t / 0.18f : 1f;
+            transform.localScale = Vector3.one * Mathf.Lerp(0.25f, 1f, pop);
+            transform.position = origin + Vector3.up * (t * 1.4f);
+            Color color = text.color;
+            color.a = 1f - Mathf.Clamp01((t - 0.45f) / 0.55f);
+            text.color = color;
+        }
+    }
+
     [HarmonyPatch(typeof(HealthHandler), "DoDamage")]
     static class LeeLuck_Patch_DoDamage
     {
@@ -115,6 +164,7 @@ namespace RWF.Cards
             LeeLuckEffect effect = __instance.GetComponent<LeeLuckEffect>();
             if (effect != null && effect.TryIgnore(damage))
             {
+                LeeLuckMissPopup.Spawn(__instance.transform.position);
                 return false;
             }
 
