@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnboundLib;
+using UnboundLib.Cards;
 using UnboundLib.GameModes;
 using UnboundLib.Networking;
 using UnityEngine;
@@ -12,6 +13,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Photon.Pun.UtilityScripts;
 using ExitGames.Client.Photon;
+using RWF.Cards;
 using RWF.UI;
 using On;
 using UnboundLib.Utils.UI;
@@ -248,6 +250,7 @@ namespace RWF
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu(RWFMod.ModName, () => { }, this.GUI, null, false);
+            CustomCard.BuildCard<LeeLuck>();
 
             this.soundEnabled = new Dictionary<string, bool>();
             this.gmInitialized = new Dictionary<string, bool>();
