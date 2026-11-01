@@ -45,6 +45,10 @@ namespace RWF.GameModes
         public override void SetActive(bool active)
         {
             this.GameMode.gameObject.SetActive(active);
+            if (active)
+            {
+                RWFGameMode.SetCurrent(this.GameMode);
+            }
         }
 
         public override void PlayerJoined(Player player)
@@ -103,7 +107,19 @@ namespace RWF.GameModes
 
         public override TeamScore GetTeamScore(int teamID)
         {
-            return new TeamScore(this.GameMode.teamPoints[teamID], this.GameMode.teamRounds[teamID]);
+            int points;
+            int rounds;
+            if (!this.GameMode.teamPoints.TryGetValue(teamID, out points))
+            {
+                points = 0;
+            }
+
+            if (!this.GameMode.teamRounds.TryGetValue(teamID, out rounds))
+            {
+                rounds = 0;
+            }
+
+            return new TeamScore(points, rounds);
         }
 
         public override void SetTeamScore(int teamID, TeamScore score)

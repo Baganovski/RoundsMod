@@ -103,7 +103,10 @@ namespace RWF.Patches
                 {
                     graphic.color = __instance.isReady ? Colors.Transparent(Colors.readycolor) : Color.clear;
                 }
-                ___buttons[i].transform.GetChild(4).GetChild(2).GetComponent<TextMeshProUGUI>().text = __instance.isReady ? "READY" : $"{(GameModeManager.CurrentHandler.AllowTeams ? "TEAM " : "")}{ExtraPlayerSkins.GetTeamColorName(__instance.currentPlayer.colorID()).ToUpper()}";
+                string colorName = __instance.currentPlayer != null
+                    ? ExtraPlayerSkins.GetTeamColorName(__instance.currentPlayer.colorID()).ToUpper()
+                    : "";
+                ___buttons[i].transform.GetChild(4).GetChild(2).GetComponent<TextMeshProUGUI>().text = __instance.isReady ? "READY" : $"{(GameModeManager.CurrentHandler.AllowTeams ? "TEAM " : "")}{colorName}";
                 ___buttons[i].transform.GetChild(4).GetChild(2).GetComponent<TextMeshProUGUI>().color = __instance.isReady ? Colors.readycolor : Colors.joinedcolor;
             }
         }
@@ -219,6 +222,7 @@ namespace RWF.Patches
             {
                 __instance.ReadyUp();
             }
+            __instance.currentlySelectedFace = Math.mod(__instance.currentlySelectedFace, ___buttons.Length);
             HoverEvent component = ___buttons[__instance.currentlySelectedFace].GetComponent<HoverEvent>();
             if (___currentButton != component)
             {
@@ -250,7 +254,7 @@ namespace RWF.Patches
                 {
                     __instance.currentlySelectedFace++;
                 }
-                else if (((__instance.currentPlayer.data.input.inputType == GeneralInput.InputType.Controller) && __instance.currentPlayer.data.playerActions.Move.X <= 0.5f) || ((__instance.currentPlayer.data.input.inputType != GeneralInput.InputType.Controller) && (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))))
+                else if (((__instance.currentPlayer.data.input.inputType == GeneralInput.InputType.Controller) && __instance.currentPlayer.data.playerActions.Move.X < -0.5f) || ((__instance.currentPlayer.data.input.inputType != GeneralInput.InputType.Controller) && (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))))
                 {
                     __instance.currentlySelectedFace--;
                 }

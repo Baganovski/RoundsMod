@@ -228,7 +228,8 @@ namespace RWF
         {
             if (!RoundsResources._soundCache.ContainsKey(name))
             {
-                var soundEvent = GameObject.Find("/SonigonSoundEventPool").transform.Find(name).gameObject?.GetComponent<InstanceSoundEvent>().soundEvent;
+                Transform found = GameObject.Find("/SonigonSoundEventPool")?.transform.Find(name);
+                var soundEvent = found != null ? found.GetComponent<InstanceSoundEvent>()?.soundEvent : null;
                 RoundsResources._soundCache.Add(name, soundEvent);
             }
 

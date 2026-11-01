@@ -9,10 +9,12 @@ namespace RWF.Patches
         private const float defaultForce = 10f;
         static bool Prefix(LowerScreenshakePerPlayer __instance)
         {
-            if (PlayerManager.instance.players.Count > 2)
+            if (PlayerManager.instance == null || PlayerManager.instance.players.Count <= 2)
             {
-                __instance.shake.shakeforce = LowerScreenshakePerPlayer_Patch_Update.defaultForce / (UnityEngine.Mathf.Pow(2f, UnityEngine.Mathf.Floor(PlayerManager.instance.players.Count/2f)));
+                return true;
             }
+
+            __instance.shake.shakeforce = LowerScreenshakePerPlayer_Patch_Update.defaultForce / (UnityEngine.Mathf.Pow(2f, UnityEngine.Mathf.Floor(PlayerManager.instance.players.Count/2f)));
             return false;
         }
     }

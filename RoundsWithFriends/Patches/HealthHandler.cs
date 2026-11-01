@@ -14,7 +14,7 @@ namespace RWF.Patches
     {
         static bool IsCeaseFire()
         {
-            return RWFMod.instance.IsCeaseFire;
+            return RWFMod.instance != null && RWFMod.instance.IsCeaseFire;
         }
 
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using TMPro;
 using UnboundLib;
 using UnboundLib.Cards;
@@ -11,6 +12,15 @@ using UnityEngine.UI;
 
 namespace RWF.UI
 {
+    [HarmonyPatch(typeof(EscapeMenuHandler), "Update")]
+    static class SandboxCardBrowser_Patch_EscapeMenu
+    {
+        static bool Prefix()
+        {
+            return !SandboxCardBrowser.ConsumePauseSuppression();
+        }
+    }
+
     public class SandboxCardBrowser : MonoBehaviour
     {
         const string LockKey = "RWF_SandboxCardBrowser";
@@ -40,6 +50,18 @@ namespace RWF.UI
         readonly Dictionary<int, List<string>> selectedCardsByPlayer = new Dictionary<int, List<string>>();
 
         public static bool IsOpen { get; private set; }
+        internal static bool SuppressPauseThisFrame;
+
+        public static bool ConsumePauseSuppression()
+        {
+            if (!SandboxCardBrowser.SuppressPauseThisFrame)
+            {
+                return false;
+            }
+
+            SandboxCardBrowser.SuppressPauseThisFrame = false;
+            return true;
+        }
 
         void Update()
         {
@@ -85,6 +107,11 @@ namespace RWF.UI
 
             if (Input.GetKeyDown(KeyCode.Tab))
             {
+                if (EscapeMenuHandler.isEscMenu)
+                {
+                    return;
+                }
+
                 if (open)
                 {
                     Close();
@@ -105,6 +132,7 @@ namespace RWF.UI
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
+                SandboxCardBrowser.SuppressPauseThisFrame = true;
                 Close();
                 return;
             }
@@ -143,7 +171,7 @@ namespace RWF.UI
 
         void OnDestroy()
         {
-            HidePreview();
+            Close();
         }
 
         static bool IsSandbox()
@@ -823,6 +851,12 @@ namespace RWF.UI
                 return;
             }
 
+            SandboxCardBrowser browser = RWFMod.instance != null ? RWFMod.instance.GetComponent<SandboxCardBrowser>() : null;
+            if (browser != null)
+            {
+                browser.selectedCardsByPlayer[playerId] = cardIds != null ? new List<string>(cardIds) : new List<string>();
+            }
+
             RemoveCustomCards(player);
             player.InvokeMethod("FullReset");
             RestoreBaseline(player);
@@ -990,12 +1024,13 @@ namespace RWF.UI
             }
 
             CardBar[] bars = CardBarHandler.instance.GetFieldValue("cardBars") as CardBar[];
-            if (bars == null || player.playerID < 0 || player.playerID >= bars.Length || bars[player.playerID] == null)
+            int index = PlayerManager.instance != null ? PlayerManager.instance.players.IndexOf(player) : -1;
+            if (bars == null || index < 0 || index >= bars.Length || bars[index] == null)
             {
                 return;
             }
 
-            bars[player.playerID].ClearBar();
+            bars[index].ClearBar();
         }
 
         static CardInfo FindCard(string objectName)

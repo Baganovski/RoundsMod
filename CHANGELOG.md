@@ -2,6 +2,9 @@
 
 - Removed private online lobbies, Steam invites, and the main-menu Online entry. Local matches stay.
 - Main menu shows a larger green pixel-font "BAG'S MOD" under the ROUNDS logo, with space before the buttons. It hides on the other menu pages. The bottom-right Discord and website links are hidden.
+- Lee Luck ignores one hit every 10 seconds, glows while that ignore is ready, and shows MISS when it blocks.
+- 3D Printed Bullets adds 3 ammo, cuts damage, slows bullets, and paints them grey.
+- Damage numbers can be turned off on the Bag's Mods page, which is also where match length switches between 3 and 5.
 
 ## v2.2.0
 

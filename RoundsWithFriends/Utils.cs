@@ -13,6 +13,11 @@ namespace RWF
         }
         public static Color Average(Color[] colors)
         {
+            if (colors == null || colors.Length == 0)
+            {
+                return Color.white;
+            }
+
             float r = 0f;
             float g = 0f;
             float b = 0f;

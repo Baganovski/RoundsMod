@@ -31,6 +31,25 @@ namespace RWF.GameModes
             RWFGameMode.instance = this;
         }
 
+        protected virtual void OnEnable()
+        {
+            RWFGameMode.instance = this;
+        }
+
+        internal static void SetCurrent(RWFGameMode mode)
+        {
+            if (mode != null)
+            {
+                RWFGameMode.instance = mode;
+            }
+        }
+
+        internal static RWFGameMode Current()
+        {
+            RWFGameMode active = GameModeManager.CurrentHandler != null ? GameModeManager.CurrentHandler.GameMode as RWFGameMode : null;
+            return active != null ? active : RWFGameMode.instance;
+        }
+
         protected virtual void Start()
         {
             this.StartCoroutine(this.Init());
@@ -61,7 +80,13 @@ namespace RWF.GameModes
         {
 
             // calculate the time in milliseconds until the battle starts
-            RWFGameMode.instance.timeUntilBattleStart = timeOfBattleStart - PhotonNetwork.ServerTimestamp;
+            RWFGameMode mode = RWFGameMode.Current();
+            if (mode == null)
+            {
+                return;
+            }
+
+            mode.timeUntilBattleStart = timeOfBattleStart - PhotonNetwork.ServerTimestamp;
 
             NetworkingManager.RPC(typeof(RWFGameMode), nameof(RWFGameMode.RPC_SyncBattleStartResponse), requestingPlayer, PhotonNetwork.LocalPlayer.ActorNumber);
         }
@@ -69,9 +94,10 @@ namespace RWF.GameModes
         [UnboundRPC]
         public static void RPC_SyncBattleStartResponse(int requestingPlayer, int readyPlayer)
         {
-            if (PhotonNetwork.LocalPlayer.ActorNumber == requestingPlayer)
+            RWFGameMode mode = RWFGameMode.Current();
+            if (mode != null && PhotonNetwork.LocalPlayer.ActorNumber == requestingPlayer)
             {
-                RWFGameMode.instance.RemovePendingRequest(readyPlayer, nameof(RWFGameMode.RPC_SyncBattleStart));
+                mode.RemovePendingRequest(readyPlayer, nameof(RWFGameMode.RPC_SyncBattleStart));
             }
         }
 
@@ -132,9 +158,10 @@ namespace RWF.GameModes
         [UnboundRPC]
         public static void RPC_SyncResponse(int requestingPlayer, int readyPlayer)
         {
-            if (PhotonNetwork.LocalPlayer.ActorNumber == requestingPlayer)
+            RWFGameMode mode = RWFGameMode.Current();
+            if (mode != null && PhotonNetwork.LocalPlayer.ActorNumber == requestingPlayer)
             {
-                RWFGameMode.instance.RemovePendingRequest(readyPlayer, nameof(RWFGameMode.RPC_RequestSync));
+                mode.RemovePendingRequest(readyPlayer, nameof(RWFGameMode.RPC_RequestSync));
             }
         }
 
@@ -155,21 +182,34 @@ namespace RWF.GameModes
 
         public virtual void PlayerDied(Player killedPlayer, int teamsAlive)
         {
+            if (teamsAlive > 1)
+            {
+                return;
+            }
+
+            TimeHandler.instance.DoSlowDown();
+            if (!(PhotonNetwork.IsMasterClient || PhotonNetwork.OfflineMode))
+            {
+                return;
+            }
+
+            int[] winners = new int[0];
             if (teamsAlive == 1)
             {
-                TimeHandler.instance.DoSlowDown();
-
-                if (PhotonNetwork.IsMasterClient)
+                Player last = PlayerManager.instance.GetLastPlayerAlive();
+                if (last != null)
                 {
-                    NetworkingManager.RPC(
-                        typeof(RWFGameMode),
-                        nameof(RWFGameMode.RPCA_NextRound),
-                        new int[] { PlayerManager.instance.GetLastPlayerAlive().teamID },
-                        this.teamPoints,
-                        this.teamRounds
-                    );
+                    winners = new int[] { last.teamID };
                 }
             }
+
+            NetworkingManager.RPC(
+                typeof(RWFGameMode),
+                nameof(RWFGameMode.RPCA_NextRound),
+                winners,
+                this.teamPoints,
+                this.teamRounds
+            );
         }
 
         public virtual void StartGame()
@@ -259,17 +299,22 @@ namespace RWF.GameModes
         }
         public virtual IEnumerator RoundTransition(int[] winningTeamIDs)
         {
+            yield return this.RoundTransition(winningTeamIDs, this.teamPoints);
+        }
+
+        public virtual IEnumerator RoundTransition(int[] winningTeamIDs, Dictionary<int, int> shownPoints)
+        {
             yield return GameModeManager.TriggerHook(GameModeHooks.HookPointEnd);
             yield return GameModeManager.TriggerHook(GameModeHooks.HookRoundEnd);
 
             int[] winningTeams = GameModeManager.CurrentHandler.GetGameWinners();
             if (winningTeams.Any())
             {
-                this.GameOver(winningTeamIDs);
+                this.GameOver(winningTeams);
                 yield break;
             }
 
-            this.StartCoroutine(PointVisualizer.instance.DoWinSequence(this.teamPoints, this.teamRounds, winningTeamIDs));
+            this.StartCoroutine(PointVisualizer.instance.DoWinSequence(shownPoints, this.teamRounds, winningTeamIDs));
 
             yield return new WaitForSecondsRealtime(1f);
             MapManager.instance.LoadNextLevel(false, false);
@@ -436,6 +481,7 @@ namespace RWF.GameModes
         }
         public virtual void RoundOver(int[] winningTeamIDs)
         {
+            Dictionary<int, int> shownPoints = new Dictionary<int, int>(this.teamPoints);
             foreach (var teamID in this.teamPoints.Keys.ToList())
             {
                 this.teamPoints[teamID] = 0;
@@ -443,7 +489,7 @@ namespace RWF.GameModes
 
             this.previousRoundWinners = winningTeamIDs.ToArray();
 
-            this.StartCoroutine(this.RoundTransition(winningTeamIDs));
+            this.StartCoroutine(this.RoundTransition(winningTeamIDs, shownPoints));
         }
 
         public virtual void PointOver(int winningTeamID)
@@ -482,7 +528,13 @@ namespace RWF.GameModes
         {
             if (PhotonNetwork.OfflineMode)
             {
-                var winningPlayer = PlayerManager.instance.players.Find(p => winningTeamIDs.Contains(p.playerID));
+                var winningPlayer = PlayerManager.instance.players.Find(p => winningTeamIDs.Contains(p.teamID));
+                if (winningPlayer == null)
+                {
+                    this.DoRestart();
+                    return;
+                }
+
                 UIHandler.instance.DisplayScreenTextLoop(winningPlayer.GetTeamColors().winText, "REMATCH?");
                 UIHandler.instance.popUpHandler.StartPicking(winningPlayer, this.GetRematchYesNo);
                 MapManager.instance.LoadNextLevel(false, false);
@@ -556,9 +608,8 @@ namespace RWF.GameModes
         [UnboundRPC]
         public static void RPCA_NextRound(int[] winningTeamIDs, Dictionary<int, int> teamPoints, Dictionary<int, int> teamRounds)
         {
-            var instance = RWFGameMode.instance;
-
-            if (instance.isTransitioning)
+            var instance = RWFGameMode.Current();
+            if (instance == null || instance.isTransitioning)
             {
                 return;
             }

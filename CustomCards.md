@@ -4,7 +4,7 @@ This is the list of things you can change on a card made with UnboundLib (`Custo
 
 A card class has two different jobs:
 
-- **What the card says.** Title, description, stat lines, rarity, and theme. The stat lines are labels. They do not change gameplay by themselves. These cards leave the art window empty.
+- **What the card says.** Title, description, stat lines, rarity, and theme. The stat lines are labels. They do not change gameplay by themselves. The art window shows the shared green pixel `BAG'S MOD`.
 - **What the card does.** Set fields in `SetupCard`. When the card is picked, the game copies those fields onto the player. Use `OnAddCard` only for behaviour the copy does not cover, and undo that in `OnRemoveCard`.
 
 Register a card once at startup with `CustomCard.BuildCard<YourCard>()`. While its category is enabled, it joins the normal pick and the sandbox card list.
@@ -15,27 +15,42 @@ Leave a field at the value in the **No change** column and that part of the play
 
 | What | Where | Values |
 | --- | --- | --- |
-| Title | `GetTitle()` | Text on the card |
-| Description | `GetDescription()` | Smaller text under the title |
+| Title | `GetTitle()` | ALL CAPS, like the vanilla titles in `VanillaCards.md` |
+| Description | `GetDescription()` | Smaller white text under the title. Sentence case, one line, about 22 characters, like `Bigger bullets`. Longer text wraps onto the stat lines. A one-off effect that is not a stock stat goes here, and the stat list stays empty. Leave the description empty when the stat lines already say the card |
 | Stat lines | `GetStats()` | The numbers on the card. See below |
 | Rarity | `GetRarity()` | `Common`, `Uncommon`, `Rare`. Rare is offered less often |
 | Theme | `GetTheme()` | Frame color. See below |
-| Art | `GetCardArt()` | Leave empty. See below |
+| Art | `GetCardArt()` | `BagCardFace.Art()`. See below |
 | Frame | `GetCardBase()` | Leave this. It returns the vanilla card frame |
-| Category | `GetModName()` | Group name in Toggle Cards. Cards that return the same string share a category. The name is also printed faintly in the bottom-left corner of the card. If you do not override it, the category is `Modded` |
+| Category | `GetModName()` | Group name in Toggle Cards. Cards that return the same string share a category. The name is also printed faintly in the bottom-left corner of the card. Leave that corner label in place. If you do not override it, the category is `Modded` |
 | In the pool | `GetEnabled()` | `true` puts it in the pick and the toggle menu. `false` hides it |
 | Can be taken again | `cardInfo.allowMultiple` in `SetupCard` | `true` lets the same player find it again. `false` removes it from later picks for that player |
 
 ### Stat lines (`CardInfoStat`)
 
-Each entry is one row on the card.
+Each entry is one row on the card. The game draws the colored `amount` first, then the `stat` label, right-aligned. Keep `amount` and `stat` together on one line, about 22 characters. Put the number in `amount`. A sentence in `stat` with an empty `amount` wraps and covers the description.
 
 | Field | What it does |
 | --- | --- |
-| `stat` | The label, such as `"Damage"` |
-| `amount` | The value text, such as `"+50%"` |
+| `stat` | The label. Use the vanilla word: `DMG`, `HP`, `ATKSPD`, `AMMO`, `Reload time`, `Reload speed`, `Block cooldown`, `Bullet speed`, `Bullet bounces`, `Life steal`, `Bullets` |
+| `amount` | The value, written like a vanilla card. See the wording below |
 | `positive` | `true` uses the good color. `false` uses the bad color |
 | `simepleAmount` | A stock phrase instead of `amount`. Use `notAssigned` to show `amount`. Other values: `aLittleBitOf`, `Some`, `aLotOf`, `aHugeAmountOf`, `slightlyLower`, `lower`, `aLotLower`, `slightlySmaller`, `smaller` |
+
+### Wording
+
+Match `VanillaCards.md`. The number on the card is not the field value from `SetupCard`.
+
+| Kind | On the card | Not this |
+| --- | --- | --- |
+| Multiplier | `+50%`, `-25%`, `+100%` | `1.5`, `0.75`, `0.25` |
+| Time | `+0.25s`, `+0.5s`, `3s`, `10s` | `0.25`, `25%` of a second, `10 seconds` on a stat |
+| Count | `+3`, `+4`, `-2`, `-1` | `3 ammo` inside the amount |
+| Distance | `+7m` | `7` |
+
+A quarter second of reload is `+0.25s Reload time`. A quarter less damage is `-25% DMG`. `0.25` is the time form. `25%` is the multiplier form.
+
+An effect that is not one of those labels is a description sentence, and `GetStats()` returns an empty array. PHOENIX says `Respawn once on death`. BRAWLER says `+200% HP 3s after dealing DMG`. LEE LUCK says `Ignore a hit per 10s`.
 
 ### Themes (`CardThemeColor.CardThemeColorType`)
 
@@ -43,7 +58,7 @@ Each entry is one row on the card.
 
 ### Art
 
-`GetCardArt()` is abstract, so every card still returns a `GameObject`. Return an empty object and do not assign a sprite. The game draws the frame, title, and stats around a blank art window. The theme colors the frame. A word that pops off the player during a fight, such as `MISS`, is gameplay feedback, not a picture on the card.
+`GetCardArt()` is abstract, so every card still returns a `GameObject`. Return `BagCardFace.Art()`. That object is the shared green pixel `BAG'S MOD`, centered in the art window. Do not assign a sprite. The faint bottom-left category name stays. The theme colors the frame. A word that pops off the player during a fight, such as `MISS`, is gameplay feedback, not a picture on the card.
 
 ## Gun stats
 
@@ -109,7 +124,7 @@ Set these on the `gun` argument in `SetupCard`. The game copies them onto the pl
 | `useCharge` | `false` | `true` turns the gun into a charge shot |
 | `destroyBulletAfter` | `0` | Any other value replaces how long a bullet lives |
 | `lockGunToDefault` | `false` | `true` locks attack speed. `forceSpecificAttackSpeed` becomes the fixed cooldown |
-| `projectileColor` | Black | Any other color is blended into the bullet color |
+| `projectileColor` | Black | Black leaves the yellow bullet. Any other color is forced to full saturation and full brightness, so a grey becomes a pure hue |
 | `projectiles` | Empty | If this has an entry, `projectiles[0].objectToSpawn` replaces the bullet prefab |
 | `objectsToSpawn` | Empty | Effects attached to the bullet. See below |
 

@@ -196,15 +196,20 @@ namespace RWF.Patches
             }
             else
             {
-                codes.Insert(disable_index, new CodeInstruction(OpCodes.Ldarg_0)); // Load the PlayerManager.<Move>d__40 instance onto the stack [PlayerManager.<Move>d__40, ...]
-                codes.Insert(disable_index + 1, new CodeInstruction(OpCodes.Ldfld, f_player)); // Load PlayerManager.<Move>d__40::player onto the stack (pops PlayerManager.<Move>d__40 off the stack) [PlayerManager.<Move>d__40::player, ...]
-                codes.Insert(disable_index + 2, new CodeInstruction(OpCodes.Ldc_I4_0)); // Load 0 onto the stack [0, PlayerManager.<Move>d__40::player, ...]
-                codes.Insert(disable_index + 3, new CodeInstruction(OpCodes.Call, m_setCollidersActive)); // Calls SetObjectColliderActive, taking the parameters off the top of the stack, leaving it how we found it [ ... ]
+                if (enable_index > disable_index)
+                {
+                    enable_index += 4;
+                }
 
-                codes.Insert(enable_index, new CodeInstruction(OpCodes.Ldarg_0)); // Load the PlayerManager.<Move>d__40 instance onto the stack [PlayerManager.<Move>d__40, ...]
-                codes.Insert(enable_index + 1, new CodeInstruction(OpCodes.Ldfld, f_player)); // Load PlayerManager.<Move>d__40::player onto the stack (pops PlayerManager.<Move>d__40 off the stack) [PlayerManager.<Move>d__40::player, ...]
-                codes.Insert(enable_index + 2, new CodeInstruction(OpCodes.Ldc_I4_1)); // Load 1 onto the stack [1, PlayerManager.<Move>d__40::player, ...]
-                codes.Insert(enable_index + 3, new CodeInstruction(OpCodes.Call, m_setCollidersActive)); // Calls SetObjectColliderActive, taking the parameters off the top of the stack, leaving it how we found it [ ... ]
+                codes.Insert(disable_index, new CodeInstruction(OpCodes.Ldarg_0));
+                codes.Insert(disable_index + 1, new CodeInstruction(OpCodes.Ldfld, f_player));
+                codes.Insert(disable_index + 2, new CodeInstruction(OpCodes.Ldc_I4_0));
+                codes.Insert(disable_index + 3, new CodeInstruction(OpCodes.Call, m_setCollidersActive));
+
+                codes.Insert(enable_index, new CodeInstruction(OpCodes.Ldarg_0));
+                codes.Insert(enable_index + 1, new CodeInstruction(OpCodes.Ldfld, f_player));
+                codes.Insert(enable_index + 2, new CodeInstruction(OpCodes.Ldc_I4_1));
+                codes.Insert(enable_index + 3, new CodeInstruction(OpCodes.Call, m_setCollidersActive));
             }
 
             // Patch to remove PlayerVelocity.simulated = true
@@ -216,7 +221,10 @@ namespace RWF.Patches
                     remove_idx = i;
                 }
             }
-            codes.RemoveRange(remove_idx, 4);
+            if (remove_idx != -1)
+            {
+                codes.RemoveRange(remove_idx, 4);
+            }
 
             return codes.AsEnumerable();
         }
@@ -236,7 +244,7 @@ namespace RWF.Patches
         }
         static bool MapHasValidGround(Map map)
         {
-            if (!(bool) map.GetFieldValue("hasCalledReady")) { return false; }
+            if (map == null || !(bool) map.GetFieldValue("hasCalledReady")) { return false; }
 
             foreach (Collider2D collider in map.gameObject.GetComponentsInChildren<Collider2D>())
             {
@@ -272,10 +280,14 @@ namespace RWF.Patches
         {
             for (int i = 0; i < PlayerManager.instance.players.Count; i++)
             {
+                if (spawnDictionary == null || i >= spawnDictionary.Length)
+                {
+                    continue;
+                }
 
                 PlayerManager.instance.StartCoroutine((IEnumerator) typeof(PlayerManager).InvokeMember("Move",
                     BindingFlags.Instance | BindingFlags.InvokeMethod |
-                    BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { PlayerManager.instance.players[i].data.playerVel, (Vector3) spawnDictionary[PlayerManager.instance.players[i].playerID] }));
+                    BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { PlayerManager.instance.players[i].data.playerVel, (Vector3) spawnDictionary[i] }));
 
                 int j = i % PlayerManager.instance.soundCharacterSpawn.Length;
 

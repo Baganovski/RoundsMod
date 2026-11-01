@@ -47,7 +47,10 @@ namespace RWF
 
 			if (!UIHandlerExtensions.ShouldShowLobbyRoundCounter())
 			{
-				instance.roundCounterSmall.gameObject.SetActive(false);
+				if (instance.roundCounterSmall != null)
+				{
+					instance.roundCounterSmall.gameObject.SetActive(false);
+				}
 				instance.InvokeMethod("HideRoundCounterSmall");
 				return;
 			}
@@ -111,7 +114,6 @@ namespace RWF
 			roundStartTextPart.loop = true;
 			roundStartTextPart.Play();
 			roundStartText.text = text;
-			instance.StopAllCoroutines();
 			instance.StartCoroutine(roundStartPulse.StartPulse());
 		}
 

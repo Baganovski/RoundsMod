@@ -68,33 +68,22 @@ namespace RWF.Patches
         static void Postfix()
         {
             GameObject menu = ToggleCardsMenuHandler.cardMenuCanvas;
+            if (menu != null && menu.activeInHierarchy && GameManager.instance != null && GameManager.instance.isPlaying)
+            {
+                Button[] buttons = menu.GetComponentsInChildren<Button>(true);
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    buttons[i].interactable = true;
+                }
+
+                Toggle[] toggles = menu.GetComponentsInChildren<Toggle>(true);
+                for (int i = 0; i < toggles.Length; i++)
+                {
+                    toggles[i].interactable = true;
+                }
+            }
+
             PauseMenuCamera.Release(menu != null ? menu.GetComponent<Canvas>() : null);
-        }
-    }
-
-    [HarmonyPatch(typeof(ToggleCardsMenuHandler), "Update")]
-    class ToggleCardsMenuHandler_Patch_Update
-    {
-        static void Postfix()
-        {
-            GameObject menu = ToggleCardsMenuHandler.cardMenuCanvas;
-            if (menu == null || !menu.activeInHierarchy || GameManager.instance == null || !GameManager.instance.isPlaying)
-            {
-                return;
-            }
-
-            // Unbound turns these off for the whole match. They need to work from the pause menu.
-            Button[] buttons = menu.GetComponentsInChildren<Button>(true);
-            for (int i = 0; i < buttons.Length; i++)
-            {
-                buttons[i].interactable = true;
-            }
-
-            Toggle[] toggles = menu.GetComponentsInChildren<Toggle>(true);
-            for (int i = 0; i < toggles.Length; i++)
-            {
-                toggles[i].interactable = true;
-            }
         }
     }
 

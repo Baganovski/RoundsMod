@@ -27,7 +27,9 @@ namespace RWF
                 newBarGo.transform.localPosition = barGo.transform.localPosition + new Vector3(0, deltaY * i, 0);
 
                 var player = PlayerManager.instance.players.Find(p => p.playerID == i);
-                var teamColor = PlayerSkinBank.GetPlayerSkinColors(player.colorID()).backgroundColor;
+                Color teamColor = player != null
+                    ? PlayerSkinBank.GetPlayerSkinColors(player.colorID()).backgroundColor
+                    : Color.white;
                 newBarGo.transform.GetChild(0).GetChild(0).gameObject.GetComponent<ProceduralImage>().color = new Color(teamColor.r, teamColor.g, teamColor.b, 0.9f);
 
                 cardBars.Add(newBarGo.GetComponent<CardBar>());

@@ -36,34 +36,41 @@ namespace RWF.Algorithms
         {
             foreach (var key in this.playerOrders.Keys)
             {
-                if (!winningTeamIDs.Contains(key))
+                List<Player> order = this.playerOrders[key];
+                if (order.Count == 0 || winningTeamIDs.Contains(key))
                 {
-                    this.playerOrders[key].Add(this.playerOrders[key][0]);
-                    this.playerOrders[key].RemoveAt(0);
+                    continue;
                 }
+
+                order.Add(order[0]);
+                order.RemoveAt(0);
+            }
+
+            if (this.teamOrder.Count <= 1)
+            {
+                return;
             }
 
             foreach (int winningTeamID in winningTeamIDs)
             {
                 int winningTeamIndex = this.teamOrder.IndexOf(winningTeamID);
+                if (winningTeamIndex < 0)
+                {
+                    continue;
+                }
 
-                if (winningTeamIndex != -1)
-                {
-                    this.teamOrder.RemoveAt(winningTeamIndex);
-                    this.teamOrder.Add(this.teamOrder[0]);
-                    this.teamOrder.RemoveAt(0);
-                    this.teamOrder.Insert(winningTeamIndex, winningTeamID);
-                }
-                else
-                {
-                    this.teamOrder.Add(this.teamOrder[0]);
-                    this.teamOrder.RemoveAt(0);
-                }
+                this.teamOrder.RemoveAt(winningTeamIndex);
+                this.teamOrder.Add(winningTeamID);
             }
         }
 
         public IEnumerable<Player> GetPlayers(int[] winningTeamIDs)
         {
+            if (this.playerOrders.Count == 0)
+            {
+                yield break;
+            }
+
             int maxTeamPlayers = this.playerOrders.Max(p => p.Value.Count);
 
             for (int playerIndex = 0; playerIndex < maxTeamPlayers; playerIndex++)

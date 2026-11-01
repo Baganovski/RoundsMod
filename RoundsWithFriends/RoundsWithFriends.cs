@@ -21,12 +21,6 @@ using System.Linq;
 
 namespace RWF
 {
-    public static class NetworkEventType
-    {
-        public static string ClientConnected = "client_connected";
-        public static string SetTeamSize = "set_team_size";
-    }
-
     [Serializable]
     public class DebugOptions
     {
@@ -84,11 +78,14 @@ namespace RWF
 
         public static RWFMod instance;
 
-        private static bool facesSet = false;
-
         public static string GetCustomPropertyKey(string prop)
         {
             return $"{ModId}/{prop}";
+        }
+
+        public static bool ShowDamageNumbers
+        {
+            get { return PlayerPrefs.GetInt(GetCustomPropertyKey("ShowDamageNumbers"), 1) == 1; }
         }
 
         public static void DebugLog(object obj)
@@ -119,23 +116,28 @@ namespace RWF
         public const string MaxClientsKey = "maxClients";
         public const string RoundsToWinGameKey = "roundsToWinGame";
 
+        const int MinRoundsToWin = 1;
+        const int MaxRoundsToWin = 5;
+
+        static int ClampRoundsToWin(int rounds)
+        {
+            return rounds >= RWFMod.MinRoundsToWin && rounds <= RWFMod.MaxRoundsToWin ? rounds : RWFMod.MaxRoundsToWin;
+        }
+
         public int RoundsToWinGame
         {
             get
             {
-                int rounds = PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey(RWFMod.RoundsToWinGameKey), 5);
-                return rounds == 3 ? 3 : 5;
+                int rounds = PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey(RWFMod.RoundsToWinGameKey), RWFMod.MaxRoundsToWin);
+                return RWFMod.ClampRoundsToWin(rounds);
             }
         }
 
         public void SetRoundsToWinGame(int rounds)
         {
-            rounds = rounds == 3 ? 3 : 5;
+            rounds = RWFMod.ClampRoundsToWin(rounds);
             PlayerPrefs.SetInt(RWFMod.GetCustomPropertyKey(RWFMod.RoundsToWinGameKey), rounds);
-            if (this.localRoundsLabel != null)
-            {
-                this.localRoundsLabel.text = $"ROUNDS: {rounds}";
-            }
+            this.RefreshRoundsLabels(rounds);
             foreach (IGameModeHandler handler in GameModeManager.Handlers.Values)
             {
                 if (handler?.Settings != null && handler.Settings.ContainsKey(RWFMod.RoundsToWinGameKey))
@@ -149,7 +151,8 @@ namespace RWF
 
         public int ToggleRoundsToWinGame()
         {
-            int rounds = this.RoundsToWinGame == 3 ? 5 : 3;
+            int current = this.RoundsToWinGame;
+            int rounds = current >= RWFMod.MaxRoundsToWin ? RWFMod.MinRoundsToWin : current + 1;
             this.SetRoundsToWinGame(rounds);
             return rounds;
         }
@@ -220,8 +223,8 @@ namespace RWF
 
         public bool IsCeaseFire { get; private set; }
 
-        public Text infoText;
-        TextMeshProUGUI localRoundsLabel;
+        readonly List<TextMeshProUGUI> roundsLabels = new List<TextMeshProUGUI>();
+        readonly List<TextMeshProUGUI> damageNumbersLabels = new List<TextMeshProUGUI>();
         private Dictionary<string, bool> soundEnabled;
         private Dictionary<string, bool> gmInitialized;
 
@@ -256,16 +259,21 @@ namespace RWF
                     "The main menu shows a green pixel BAG'S MOD under the ROUNDS logo, and hides it on other pages.",
                     "The corner Discord and website links are hidden.",
                     "Menu layouts are changed.",
-                    "Matches can be set to 3 or 5.",
+                    "Match length cycles from 1 to 5 on the Bag's Mods page in MODS.",
                     "Sandbox powerups are changed.",
-                    "Lee Luck ignores one hit every 10 seconds and shows MISS when it blocks."
+                    "Lee Luck ignores one bullet every 10 seconds, glows green while it is ready, and shows MISS when it blocks.",
+                    "Bag's Mod cards show the shared green pixel BAG'S MOD in the art window.",
+                    "3D Printed Bullets adds 3 ammo, cuts bullet damage by 40%, slows bullets by 10%, and paints bullets grey.",
+                    "Damage numbers pop out of a player when they take a hit. They can be turned off on the Bag's Mods page."
                 },
                 "GitHub",
                 "https://github.com/Baganovski/RoundsMod");
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu(RWFMod.ModName, () => { }, this.GUI, null, false);
+            Unbound.RegisterMenu(RWFMod.BagsModsMenuName, () => { }, this.BagsGUI, null, false);
             CustomCard.BuildCard<LeeLuck>();
+            CustomCard.BuildCard<ThreeDPrintedBullets>();
 
             this.soundEnabled = new Dictionary<string, bool>();
             this.gmInitialized = new Dictionary<string, bool>();
@@ -296,8 +304,6 @@ namespace RWF
             GameModeManager.AddHook(GameModeHooks.HookPointStart, gm => this.ToggleCeaseFire(true));
             GameModeManager.AddHook(GameModeHooks.HookBattleStart, gm => this.ToggleCeaseFire(false));
             GameModeManager.AddHook(GameModeHooks.HookInitEnd, this.OnGameModeInitialized);
-            GameModeManager.AddHook(GameModeHooks.HookGameStart, this.UnsetFaces);
-            GameModeManager.AddHook(GameModeHooks.HookPickStart, this.SetPlayerFaces);
             GameModeManager.AddHook(GameModeHooks.HookGameStart, gm => PlayerSpotlight.CancelFadeHook(true));
             GameModeManager.AddHook(GameModeHooks.HookBattleStart, gm => PlayerSpotlight.BattleStartFailsafe());
 
@@ -466,12 +472,12 @@ namespace RWF
             text = text.Trim();
             if (!text.Equals("UNBOUND", StringComparison.OrdinalIgnoreCase)
                 && !text.Equals("Baganovski's Mod", StringComparison.OrdinalIgnoreCase)
-                && !text.Equals(RWFMod.StampText, StringComparison.OrdinalIgnoreCase))
+                && !text.Equals(PixelStamp.Text, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
-            label.text = RWFMod.StampText;
+            label.text = PixelStamp.Text;
             label.color = new Color(0f, 0f, 0f, 0f);
             label.raycastTarget = false;
 
@@ -481,11 +487,9 @@ namespace RWF
             }
         }
 
+        public const string BagsModsMenuName = "Bag's Mods";
         const string BagsCreditsName = "Bag's Mod";
-        const string StampText = "BAG'S MOD";
         const string StampFrameName = "BagStampFrame";
-        static readonly Color StampGreen = new Color(0.25f, 0.95f, 0.35f, 1f);
-        static Sprite stampSprite;
 
         void PlaceStamp(TextMeshProUGUI label)
         {
@@ -549,14 +553,11 @@ namespace RWF
         void EnsurePixelTitle(TextMeshProUGUI label)
         {
             const int pixel = 5;
-            const int letterGap = 3;
-            const int glyphWidth = 5;
-            const int glyphHeight = 7;
             Transform existing = label.transform.Find("PixelTitle");
             if (existing != null)
             {
                 RectTransform existingRect = existing.GetComponent<RectTransform>();
-                if (existingRect != null && Mathf.Approximately(existingRect.sizeDelta.y, glyphHeight * pixel))
+                if (existingRect != null && Mathf.Approximately(existingRect.sizeDelta.y, PixelStamp.GlyphHeight * pixel))
                 {
                     return;
                 }
@@ -564,106 +565,7 @@ namespace RWF
                 UnityEngine.Object.Destroy(existing.gameObject);
             }
 
-            GameObject root = new GameObject("PixelTitle");
-            root.transform.SetParent(label.transform, false);
-            RectTransform rootRect = root.AddComponent<RectTransform>();
-            rootRect.anchorMin = new Vector2(0.5f, 0.5f);
-            rootRect.anchorMax = new Vector2(0.5f, 0.5f);
-            rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = Vector2.zero;
-
-            string text = RWFMod.StampText;
-            int cursor = 0;
-            int width = 0;
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (text[i] == ' ')
-                {
-                    width += pixel * 3;
-                    continue;
-                }
-
-                width += glyphWidth * pixel;
-                if (i < text.Length - 1 && text[i + 1] != ' ')
-                {
-                    width += letterGap;
-                }
-            }
-
-            rootRect.sizeDelta = new Vector2(width, glyphHeight * pixel);
-            for (int i = 0; i < text.Length; i++)
-            {
-                char character = text[i];
-                if (character == ' ')
-                {
-                    cursor += pixel * 3;
-                    continue;
-                }
-
-                int[] rows;
-                if (!RWFMod.PixelGlyphs.TryGetValue(character, out rows))
-                {
-                    cursor += glyphWidth * pixel + letterGap;
-                    continue;
-                }
-
-                for (int y = 0; y < rows.Length; y++)
-                {
-                    int bits = rows[y];
-                    for (int x = 0; x < glyphWidth; x++)
-                    {
-                        if ((bits & (1 << (glyphWidth - 1 - x))) == 0)
-                        {
-                            continue;
-                        }
-
-                        GameObject dot = new GameObject("Px");
-                        dot.transform.SetParent(root.transform, false);
-                        RectTransform dotRect = dot.AddComponent<RectTransform>();
-                        dotRect.anchorMin = new Vector2(0f, 1f);
-                        dotRect.anchorMax = new Vector2(0f, 1f);
-                        dotRect.pivot = new Vector2(0f, 1f);
-                        dotRect.sizeDelta = new Vector2(pixel, pixel);
-                        dotRect.anchoredPosition = new Vector2(cursor + x * pixel, -(y * pixel));
-                        Image image = dot.AddComponent<Image>();
-                        image.sprite = RWFMod.StampSprite;
-                        image.color = RWFMod.StampGreen;
-                        image.raycastTarget = false;
-                    }
-                }
-
-                cursor += glyphWidth * pixel + letterGap;
-            }
-        }
-
-        static readonly Dictionary<char, int[]> PixelGlyphs = new Dictionary<char, int[]>
-        {
-            { 'A', new[] { 0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 } },
-            { 'B', new[] { 0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110 } },
-            { 'D', new[] { 0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110 } },
-            { 'G', new[] { 0b01111, 0b10000, 0b10000, 0b10111, 0b10001, 0b10001, 0b01111 } },
-            { 'M', new[] { 0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001 } },
-            { 'O', new[] { 0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 } },
-            { 'S', new[] { 0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110 } },
-            { '\'', new[] { 0b00110, 0b00110, 0b01100, 0b00000, 0b00000, 0b00000, 0b00000 } },
-        };
-
-        static Sprite StampSprite
-        {
-            get
-            {
-                if (RWFMod.stampSprite == null)
-                {
-                    Texture2D texture = Texture2D.whiteTexture;
-                    RWFMod.stampSprite = Sprite.Create(
-                        texture,
-                        new Rect(0f, 0f, texture.width, texture.height),
-                        new Vector2(0.5f, 0.5f),
-                        100f);
-                }
-
-                return RWFMod.stampSprite;
-            }
+            PixelStamp.Build(label.transform, pixel);
         }
 
         void SyncStampVisibility()
@@ -705,6 +607,89 @@ namespace RWF
                 PlayerPrefs.SetInt(RWFMod.GetCustomPropertyKey("ShowKeybinds"), val ? 1 : 0);
             }
             MenuHandler.CreateToggle(PlayerPrefs.GetInt(RWFMod.GetCustomPropertyKey("ShowKeybinds"), 1) == 1, "Show keybind hints in menus", menu, ShowKeybindsChanged, 30);
+        }
+
+        private void BagsGUI(GameObject menu)
+        {
+            MenuHandler.CreateText(RWFMod.BagsModsMenuName, menu, out TextMeshProUGUI _, 45);
+            GameObject gap = MenuHandler.CreateText(".", menu, out TextMeshProUGUI gapText, 30, true, new Color(0f, 0f, 0f, 0f));
+            gapText.raycastTarget = false;
+            RectTransform gapRect = gap.GetComponent<RectTransform>();
+            gapRect.sizeDelta = new Vector2(gapRect.sizeDelta.x, 36f);
+            LayoutElement gapLayout = gap.GetComponent<LayoutElement>();
+            if (gapLayout == null)
+            {
+                gapLayout = gap.AddComponent<LayoutElement>();
+            }
+            gapLayout.minHeight = 36f;
+            gapLayout.preferredHeight = 36f;
+            GameObject damageButton = MenuHandler.CreateButton(this.DamageNumbersLabelText(), menu, () =>
+            {
+                bool next = !RWFMod.ShowDamageNumbers;
+                PlayerPrefs.SetInt(RWFMod.GetCustomPropertyKey("ShowDamageNumbers"), next ? 1 : 0);
+                this.RefreshDamageNumbersLabels();
+            });
+            damageButton.name = "ShowDamageNumbers";
+            this.RegisterDamageNumbersLabel(damageButton.GetComponentInChildren<TextMeshProUGUI>());
+            GameObject roundsButton = MenuHandler.CreateButton($"ROUNDS: {this.RoundsToWinGame}", menu, () =>
+            {
+                this.ToggleRoundsToWinGame();
+            });
+            roundsButton.name = "RoundsToWin";
+            this.RegisterRoundsLabel(roundsButton.GetComponentInChildren<TextMeshProUGUI>());
+        }
+
+        string DamageNumbersLabelText()
+        {
+            return $"SHOW DAMAGE NUMBERS: {(RWFMod.ShowDamageNumbers ? "YES" : "NO")}";
+        }
+
+        void RegisterDamageNumbersLabel(TextMeshProUGUI label)
+        {
+            if (label != null && !this.damageNumbersLabels.Contains(label))
+            {
+                this.damageNumbersLabels.Add(label);
+            }
+        }
+
+        void RefreshDamageNumbersLabels()
+        {
+            string text = this.DamageNumbersLabelText();
+            for (int i = this.damageNumbersLabels.Count - 1; i >= 0; i--)
+            {
+                TextMeshProUGUI label = this.damageNumbersLabels[i];
+                if (label == null)
+                {
+                    this.damageNumbersLabels.RemoveAt(i);
+                    continue;
+                }
+
+                label.text = text;
+            }
+        }
+
+        void RegisterRoundsLabel(TextMeshProUGUI label)
+        {
+            if (label != null && !this.roundsLabels.Contains(label))
+            {
+                this.roundsLabels.Add(label);
+            }
+        }
+
+        void RefreshRoundsLabels(int rounds)
+        {
+            string text = $"ROUNDS: {rounds}";
+            for (int i = this.roundsLabels.Count - 1; i >= 0; i--)
+            {
+                TextMeshProUGUI label = this.roundsLabels[i];
+                if (label == null)
+                {
+                    this.roundsLabels.RemoveAt(i);
+                    continue;
+                }
+
+                label.text = text;
+            }
         }
 
         void StyleBagsCreditsButton()
@@ -769,39 +754,6 @@ namespace RWF
             RWFMod.instance.debugOptions = opts;
             GameModeManager.CurrentHandler?.ChangeSetting("roundsToWinGame", opts.rounds);
             GameModeManager.CurrentHandler?.ChangeSetting("pointsToWinRound", opts.points);
-        }
-
-        private IEnumerator UnsetFaces(IGameModeHandler gm)
-        {
-            RWFMod.facesSet = false;
-            yield break;
-        }
-        private IEnumerator SetPlayerFaces(IGameModeHandler gm)
-        {
-            if (RWFMod.facesSet || PhotonNetwork.OfflineMode)
-            {
-                yield break;
-            }
-            foreach (Player player in PlayerManager.instance.players)
-            {
-                if (player.data.view.IsMine)
-                {
-                    PlayerFace playerFace = CharacterCreatorHandler.instance.selectedPlayerFaces[player.GetAdditionalData().localID];
-                    player.data.view.RPC("RPCA_SetFace", RpcTarget.All, new object[]
-                    {
-                        playerFace.eyeID,
-                        playerFace.eyeOffset,
-                        playerFace.mouthID,
-                        playerFace.mouthOffset,
-                        playerFace.detailID,
-                        playerFace.detailOffset,
-                        playerFace.detail2ID,
-                        playerFace.detail2Offset
-                    });
-                }
-            }
-            RWFMod.facesSet = true;
-            yield break;
         }
 
         static string GetHandlerID(IGameModeHandler gm)
@@ -1588,33 +1540,7 @@ namespace RWF
                 });
             }
 
-            this.CreateLocalRoundsButton(localGameModeGroupGo);
             yield break;
-        }
-
-        void CreateLocalRoundsButton(GameObject parent)
-        {
-            if (parent.transform.Find("RoundsToWin") != null)
-            {
-                return;
-            }
-
-            GameObject button = MenuHandler.CreateButton($"ROUNDS: {this.RoundsToWinGame}", parent, () =>
-            {
-                int rounds = this.ToggleRoundsToWinGame();
-                if (this.localRoundsLabel != null)
-                {
-                    this.localRoundsLabel.text = $"ROUNDS: {rounds}";
-                }
-            });
-            button.name = "RoundsToWin";
-            this.localRoundsLabel = button.GetComponentInChildren<TextMeshProUGUI>();
-
-            Transform back = parent.transform.Find("Back");
-            if (back != null)
-            {
-                button.transform.SetSiblingIndex(back.GetSiblingIndex());
-            }
         }
     }
 }

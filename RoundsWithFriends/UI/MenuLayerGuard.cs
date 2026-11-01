@@ -11,6 +11,7 @@ namespace RWF.UI
 
         bool groupsHidden;
         bool healthHidden;
+        int lastHealthPlayerCount = -1;
         readonly List<GameObject> hiddenGroups = new List<GameObject>();
         readonly Dictionary<Behaviour, bool> hiddenGraphics = new Dictionary<Behaviour, bool>();
         readonly Dictionary<Renderer, bool> hiddenRenderers = new Dictionary<Renderer, bool>();
@@ -33,7 +34,19 @@ namespace RWF.UI
 
             if (togglesOpen || SandboxCardBrowser.IsOpen)
             {
-                HideHealthBars();
+                int playerCount = PlayerManager.instance != null && PlayerManager.instance.players != null
+                    ? PlayerManager.instance.players.Count
+                    : 0;
+                if (!healthHidden || playerCount != lastHealthPlayerCount)
+                {
+                    if (healthHidden)
+                    {
+                        RestoreHealthBars();
+                    }
+
+                    HideHealthBars();
+                    lastHealthPlayerCount = playerCount;
+                }
             }
             else if (healthHidden)
             {

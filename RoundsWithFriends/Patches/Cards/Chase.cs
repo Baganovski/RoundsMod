@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using UnboundLib;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Collections.Generic;
 
@@ -9,9 +10,16 @@ namespace RWF.Patches.Cards
     [HarmonyPatch(typeof(Chase), "Update")]
     class Chase_Patch_Update
     {
+        static readonly FieldInfo Simulated = AccessTools.Field(typeof(PlayerVelocity), "simulated");
+
         static bool Prefix(Player ___player)
         {
-            return (bool) ___player.data.playerVel.GetFieldValue("simulated") && !RWFMod.instance.IsCeaseFire;
+            if (___player == null || ___player.data == null || ___player.data.playerVel == null || RWFMod.instance == null || Chase_Patch_Update.Simulated == null)
+            {
+                return true;
+            }
+
+            return (bool) Chase_Patch_Update.Simulated.GetValue(___player.data.playerVel) && !RWFMod.instance.IsCeaseFire;
         }
 
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)

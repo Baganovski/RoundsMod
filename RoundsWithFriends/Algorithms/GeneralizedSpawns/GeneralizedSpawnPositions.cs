@@ -57,7 +57,7 @@ namespace RWF.Algorithms
 
         private static Vector2 RandomOnUnitCircle()
         {
-            float theta = GeneralizedSpawnPositions.RandomRange(0f, UnityEngine.Mathf.PI);
+            float theta = GeneralizedSpawnPositions.RandomRange(0f, 2f * UnityEngine.Mathf.PI);
 
             return new Vector2(UnityEngine.Mathf.Cos(theta), UnityEngine.Mathf.Sin(theta));
         }
@@ -97,11 +97,15 @@ namespace RWF.Algorithms
                 if (spawnPositions.Count() == 0)
                 {
                     List<Vector2> largestSubgraph = mapGraph.LargestSubgraph().Select(i => mapGraph.vertices[i]).ToList();
+                    if (largestSubgraph.Count == 0)
+                    {
+                        largestSubgraph = mapGraph.vertices.ToList();
+                    }
 
                     // choose random valid point from largest subgraph
                     Vector2 firstSpawn = Vector2.zero;
                     bool valid = false;
-                    for (int _ = 0; _ < GeneralizedSpawnPositions.maxAttempts; _++)
+                    for (int _ = 0; _ < GeneralizedSpawnPositions.maxAttempts && largestSubgraph.Count > 0; _++)
                     {
                         firstSpawn = largestSubgraph[GeneralizedSpawnPositions.RandomRange(0, largestSubgraph.Count())];
                         if (GeneralizedSpawnPositions.IsValidSpawnPosition(firstSpawn))
@@ -113,7 +117,7 @@ namespace RWF.Algorithms
                     if (!valid)
                     {
                         // fallback - cannot be RandomValidPosition since it must be a member of the graph
-                        for (int _ = 0; _ < GeneralizedSpawnPositions.maxAttempts; _++)
+                        for (int _ = 0; _ < GeneralizedSpawnPositions.maxAttempts && mapGraph.width > 0; _++)
                         {
                             firstSpawn = mapGraph.vertices[GeneralizedSpawnPositions.RandomRange(0, mapGraph.width)];
                             if (GeneralizedSpawnPositions.IsValidSpawnPosition(firstSpawn))
@@ -143,7 +147,7 @@ namespace RWF.Algorithms
                 }
 
                 // Add positions from this sample space to the list of spawn positions
-                while (GeneralizedSpawnPositions.NumberOfTeams > spawnPositions.Count())
+                while (sampleSpace.Count > 0 && GeneralizedSpawnPositions.NumberOfTeams > spawnPositions.Count())
                 {
                     float bestDistance = -1f;
                     var bestPos = Vector2.zero;
@@ -398,9 +402,13 @@ namespace RWF.Algorithms
             {
                 float r = GeneralizedSpawnPositions.RandomRange(GeneralizedSpawnPositions.minDistanceAway, GeneralizedSpawnPositions.maxDistanceAway);
                 var newPosition = CastToGround(position + r * GeneralizedSpawnPositions.RandomOnUnitCircle());
-                float dist = (avoidPoints == null || avoidPoints.Count() == 0) ? Vector2.Distance(newPosition, position) : avoidPoints.Select(v => Vector2.Distance(v, newPosition)).Max();
+                float dist = Vector2.Distance(newPosition, position);
+                float nearest = (avoidPoints == null || avoidPoints.Count() == 0) ? dist : avoidPoints.Select(v => Vector2.Distance(v, newPosition)).Min();
 
-                if (IsValidSpawnPosition(newPosition) && dist <= GeneralizedSpawnPositions.maxDistanceAway && dist >= GeneralizedSpawnPositions.minDistanceAway)
+                if (IsValidSpawnPosition(newPosition)
+                    && dist <= GeneralizedSpawnPositions.maxDistanceAway
+                    && dist >= GeneralizedSpawnPositions.minDistanceAway
+                    && nearest >= GeneralizedSpawnPositions.minDistanceAway)
                 {
                     // Check for line-of-sight if required
                     if (requireLOS)

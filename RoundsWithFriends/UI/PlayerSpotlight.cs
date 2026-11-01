@@ -149,7 +149,7 @@ namespace RWF.UI
             while (time > 0f)
             {
                 PlayerSpotlight.SetShadowOpacity(UnityEngine.Mathf.Lerp(a, a0, time / totalTime));
-                time -= Time.deltaTime;
+                time -= Time.unscaledDeltaTime;
                 yield return null;
             }
             PlayerSpotlight.SetShadowOpacity(a);
@@ -217,14 +217,14 @@ namespace RWF.UI
         {
             if (this.player == null)
             {
-                GameObject.Destroy(this);
+                GameObject.Destroy(this.gameObject);
             }
         }
         void Update()
         {
             if (this.player == null)
             {
-                GameObject.Destroy(this);
+                GameObject.Destroy(this.gameObject);
                 return;
             }
             this.transform.position = this.player.gameObject.transform.position;

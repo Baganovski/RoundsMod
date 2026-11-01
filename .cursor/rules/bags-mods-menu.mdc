@@ -1,0 +1,11 @@
+---
+description: Put new Bag's feature options on the Bag's Mods page
+alwaysApply: true
+---
+
+# Bag's Mods menu
+
+Toggles and options for features we add go on the Bag's Mods page, `RWFMod.BagsModsMenuName`, registered with `Unbound.RegisterMenu` and filled in by `BagsGUI`.
+
+- Do not add those options to the Rounds With Friends page. That page keeps the existing Rounds With Friends settings, such as keybind hints.
+- Card category stays `Bag's Mod` via `LeeLuck.Category`. That name is the card list, not this menu.
