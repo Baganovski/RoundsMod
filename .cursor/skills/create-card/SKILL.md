@@ -36,7 +36,7 @@ A class in `RoundsWithFriends/Cards/` under namespace `RWF.Cards`, registered on
 | `GetCardArt()` | Return `BagCardFace.Art()`. That draws the shared green pixel `BAG'S MOD` in the art window. Do not load or embed a sprite. The faint bottom-left category name stays |
 | `GetCardBase()` | Do not override |
 | `SetupCard` | Set only copied fields. Leave a field at its no-change value to leave the player alone. Set `cardInfo.allowMultiple` here |
-| `OnAddCard` / `OnRemoveCard` | Behaviour the catalog does not copy. `OnRemoveCard` undoes `OnAddCard`, including destroying a component when its stack count hits 0 |
+| `OnAddCard` / `OnRemoveCard` | Behaviour the catalog does not copy. `OnRemoveCard` decrements the stack count and turns the effect off at 0. Do not `Object.Destroy` that component: a same-frame re-add still sees the dying component |
 
 `attackSpeed` below 1 shoots faster. `damage` cannot end under `0.25`. Max ammo ends between 1 and 90. Extra `numberOfProjectiles` also splits `damage` and `knockback` when the gun does not already fire exactly one bullet. `timeToReachFullMovementMultiplier` at 0 wipes the stat; leave it at 1.
 
@@ -55,7 +55,39 @@ CustomCard.BuildCard<TheCard>();
 
 `Player` and `HealthHandler` are on the same GameObject. Add a component to `player.gameObject` in `OnAddCard`. One damage instance is `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)`. A prefix that returns false skips that call. Name the prefix argument `damage`, or Harmony will not pass the vector in. Ignore a zero-length `damage` without spending a charge.
 
-An upside with no cost is Uncommon or Rare, and `allowMultiple` stays false unless the user asked for copies. If copies can still stack, keep one component and shorten its timer by the stack count.
+An upside with no cost is Uncommon or Rare, and `allowMultiple` stays false unless the user asked for copies. If copies can still stack, keep one component and shorten its timer by the stack count. Gate every hook on `stacks > 0`.
+
+Sandbox removes every custom card and picks the list again in the same frame. `Object.Destroy` on the effect waits until the frame ends, so `OnAddCard` finds the dying component, increments it, and the effect is gone after the stats have already been copied. Leave the component on the player. Copy this:
+
+```csharp
+public override void OnAddCard(Player player, Gun gun, GunAmmo gunAmmo, CharacterData data, HealthHandler health, Gravity gravity, Block block, CharacterStatModifiers characterStats)
+{
+    CardEffect effect = player.gameObject.GetComponent<CardEffect>();
+    if (effect == null)
+    {
+        effect = player.gameObject.AddComponent<CardEffect>();
+    }
+
+    effect.stacks++;
+}
+
+public override void OnRemoveCard(Player player, Gun gun, GunAmmo gunAmmo, CharacterData data, HealthHandler health, Gravity gravity, Block block, CharacterStatModifiers characterStats)
+{
+    CardEffect effect = player.gameObject.GetComponent<CardEffect>();
+    if (effect == null)
+    {
+        return;
+    }
+
+    effect.stacks = Mathf.Max(0, effect.stacks - 1);
+    if (effect.stacks <= 0)
+    {
+        effect.Clear();
+    }
+}
+```
+
+`Clear` hides visuals and resets timers. Hooks return immediately when `effect == null || effect.stacks <= 0`. Do not call `Object.Destroy` on that component.
 
 Do not add a picture to new cards. `GetCardArt()` returns `BagCardFace.Art()`, the shared green pixel `BAG'S MOD` centered in the art window. Leave the faint bottom-left category name in place. A gameplay word, such as `MISS` when Lee Luck ignores a hit, can rise off the player and fade. That is fight feedback, not a picture on the card.
 

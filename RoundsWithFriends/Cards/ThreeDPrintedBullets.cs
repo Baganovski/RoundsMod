@@ -33,11 +33,7 @@ namespace RWF.Cards
                 return;
             }
 
-            effect.stacks--;
-            if (effect.stacks <= 0)
-            {
-                Object.Destroy(effect);
-            }
+            effect.stacks = Mathf.Max(0, effect.stacks - 1);
         }
 
         protected override string GetTitle()
@@ -121,7 +117,8 @@ namespace RWF.Cards
                 return;
             }
 
-            if (__instance.player.GetComponent<PrintedBulletsPlastic>() == null)
+            PrintedBulletsPlastic effect = __instance.player.GetComponent<PrintedBulletsPlastic>();
+            if (effect == null || effect.stacks <= 0)
             {
                 return;
             }

@@ -24,7 +24,12 @@ namespace RWF.Cards
                 effect = player.gameObject.AddComponent<LeeLuckEffect>();
             }
 
+            bool wasEmpty = effect.stacks <= 0;
             effect.stacks++;
+            if (wasEmpty)
+            {
+                effect.sorted = false;
+            }
         }
 
         public override void OnRemoveCard(Player player, Gun gun, GunAmmo gunAmmo, CharacterData data, HealthHandler health, Gravity gravity, Block block, CharacterStatModifiers characterStats)
@@ -35,10 +40,10 @@ namespace RWF.Cards
                 return;
             }
 
-            effect.stacks--;
+            effect.stacks = Mathf.Max(0, effect.stacks - 1);
             if (effect.stacks <= 0)
             {
-                Object.Destroy(effect);
+                effect.Clear();
             }
         }
 
@@ -87,12 +92,22 @@ namespace RWF.Cards
     {
         const float GlowSize = 2.3f;
         public int stacks;
+        public bool sorted;
         float readyAt;
         SpriteRenderer glow;
         CharacterData character;
-        bool sorted;
         static Sprite glowSprite;
         static Material glowMaterial;
+
+        public void Clear()
+        {
+            readyAt = 0f;
+            sorted = false;
+            if (glow != null)
+            {
+                glow.enabled = false;
+            }
+        }
 
         public bool TryIgnore(Vector2 damage)
         {

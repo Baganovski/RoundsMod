@@ -215,10 +215,10 @@ Each entry is an `ObjectsToSpawn`. The game adds it to the player's bullet. Matc
 | --- | --- |
 | `SetupCard` | Once, when the card is built. Put stat changes here |
 | `OnAddCard` | When a player receives the card. Use this for behaviour the tables above do not copy. `Player` and `HealthHandler` are on the same object |
-| `OnRemoveCard` | When the card is taken off that player. Undo whatever `OnAddCard` changed, including destroying a component |
-
-One damage instance is `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)`. Nothing in the tables above ignores a hit. A Harmony prefix on `DoDamage` that returns false skips that instance. Name the damage argument `damage`. A zero-length damage vector is not a hit. `PatchUtils.ApplyPatches` already applies `[HarmonyPatch]` types in this assembly.
+| `OnRemoveCard` | When the card is taken off that player. Undo whatever `OnAddCard` changed. Decrement a stack counter and hide visuals. Do not `Object.Destroy` the effect component: sandbox rebuilds the player's cards in the same frame, and a destroyed component stays non-null until the frame ends, so `OnAddCard` would reuse it and then lose it |
 | `OnReassignCard` | When the card is moved to another player |
 | `Callback` | Each time a visible copy of the card is created |
+
+One damage instance is `HealthHandler.DoDamage(Vector2 damage, Vector2 position, Color blinkColor, GameObject damagingWeapon, Player damagingPlayer, bool healthRemoval, bool lethal, bool ignoreBlock)`. Nothing in the tables above ignores a hit. A Harmony prefix on `DoDamage` that returns false skips that instance. Name the damage argument `damage`. A zero-length damage vector is not a hit. `PatchUtils.ApplyPatches` already applies `[HarmonyPatch]` types in this assembly.
 
 `OnAddCard` and `OnRemoveCard` receive the live player, gun, ammo, character data, health, gravity, block, and stat modifiers.

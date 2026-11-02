@@ -264,6 +264,8 @@ namespace RWF
                     "Lee Luck ignores one bullet every 10 seconds, glows green while it is ready, and shows MISS when it blocks.",
                     "Bag's Mod cards show the shared green pixel BAG'S MOD in the art window.",
                     "3D Printed Bullets adds 3 ammo, cuts bullet damage by 40%, slows bullets by 10%, and paints bullets grey.",
+                    "Out of Date Biscuits leaves a 10 HP mine on surfaces for 10 seconds when a bullet hits the map.",
+                    "Card effects stay after the sandbox rebuilds the card list.",
                     "Damage numbers pop out of a player when they take a hit. They can be turned off on the Bag's Mods page."
                 },
                 "GitHub",
@@ -274,6 +276,7 @@ namespace RWF
             Unbound.RegisterMenu(RWFMod.BagsModsMenuName, () => { }, this.BagsGUI, null, false);
             CustomCard.BuildCard<LeeLuck>();
             CustomCard.BuildCard<ThreeDPrintedBullets>();
+            CustomCard.BuildCard<OutOfDateBiscuits>();
 
             this.soundEnabled = new Dictionary<string, bool>();
             this.gmInitialized = new Dictionary<string, bool>();

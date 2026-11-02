@@ -1,0 +1,13 @@
+---
+description: Keep Bag's Mod card effects alive across sandbox card rebuilds
+globs: RoundsWithFriends/Cards/**/*.cs
+alwaysApply: false
+---
+
+# Card effect lifecycle
+
+Sandbox calls `OnRemoveCard` for every custom card, then `OnAddCard` again, in the same frame. `Object.Destroy` on an effect component does not run until the frame ends. `GetComponent` still returns that dying component, `OnAddCard` stacks onto it, and the effect vanishes after the copied stats stay.
+
+- Keep one component on `player.gameObject`. `OnAddCard` adds it only when `GetComponent` is null, then increments `stacks`.
+- `OnRemoveCard` sets `stacks = Mathf.Max(0, stacks - 1)`. At 0, hide visuals and reset timers. Do not `Object.Destroy` the component.
+- Every hook and patch returns immediately when the component is missing or `stacks <= 0`.
